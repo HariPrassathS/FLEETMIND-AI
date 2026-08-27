@@ -1770,6 +1770,7 @@ class FleetMindStore {
       lorry_code: lorry.lorry_code,
       registration_number: lorry.registration_number,
       model: lorry.model || 'Commercial Carrier (6 Ton)',
+      image_url: lorry.image_url || undefined,
       max_weight_kg: lorry.max_weight_kg || 6000,
       max_volume_m3: lorry.max_volume_m3 || 24,
       fuel_efficiency_km_per_l: lorry.fuel_efficiency_km_per_l || 7.5,
@@ -1790,6 +1791,20 @@ class FleetMindStore {
       syncVehicleToSupabase(newLorry);
     }
     return newLorry;
+  }
+
+  public updateLorry(lorryId: string, updates: Partial<Lorry>, skipRemoteSync = false): Lorry | null {
+    const l = this.lorries.find((x) => x.id === lorryId || x.lorry_code === lorryId);
+    if (!l) return null;
+    const before = { ...l };
+    Object.assign(l, updates, { updated_at: new Date().toISOString() });
+    this.saveToLocalStorage();
+    this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'LORRY_UPDATED', 'LORRY', l.id, before, l);
+    this.notify('LORRY_UPDATED', l);
+    if (!skipRemoteSync) {
+      syncVehicleToSupabase(l);
+    }
+    return l;
   }
 
   public updateLorryStatus(lorryId: string, status: Lorry['status'], skipRemoteSync = false): Lorry | null {

@@ -36,8 +36,13 @@ import {
   Navigation,
   Activity,
   BarChart3,
+  Eye,
+  Scale,
+  Thermometer,
+  Radio,
 } from 'lucide-react';
 import { parseShipmentWithAI, ParsedShipment } from '../../../lib/ai/groq';
+import { VehicleAvatar } from '../../../components/brand/vehicle-avatar';
 
 export default function ShipmentsPage() {
   const [shipments, setShipments] = useState<Shipment[]>(fleetMindStore.getShipments());
@@ -47,6 +52,9 @@ export default function ShipmentsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING_REVIEW'>('ALL');
   const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  // Selected vehicle for View Truck Quick Inspect Modal
+  const [viewTruckDetails, setViewTruckDetails] = useState<Lorry | null>(null);
 
   // Autonomous Auto-Dispatch Toggle
   const [autoDispatchCritical, setAutoDispatchCritical] = useState<boolean>(
@@ -938,62 +946,100 @@ export default function ShipmentsPage() {
                             setSelectedLorryId(cand.lorry.id);
                             if (cand.driver) setSelectedDriverId(cand.driver.id);
                           }}
-                          className={`p-4 rounded-3xl border-2 transition cursor-pointer relative space-y-3 ${
+                          className={`p-4 rounded-3xl border-2 transition cursor-pointer relative space-y-3.5 ${
                             isSelected
-                              ? 'border-blue-600 bg-blue-50/40 shadow-card ring-2 ring-blue-600/30'
+                              ? 'border-blue-600 bg-blue-50/50 shadow-card ring-2 ring-blue-600/30'
                               : cand.is_feasible
-                              ? 'border-slate-200 bg-white hover:border-blue-300'
-                              : 'border-slate-200 bg-slate-50 opacity-70'
+                              ? 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'
+                              : 'border-slate-200 bg-slate-50/80 opacity-75'
                           }`}
                         >
-                          {/* Top: Lorry image & info */}
-                          <div className="flex items-start gap-3">
-                            <img
-                              src={
-                                cand.lorry.image_url ||
-                                'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=600&auto=format&fit=crop&q=80'
-                              }
-                              alt={cand.lorry.model}
-                              className="w-16 h-16 rounded-2xl object-cover border border-slate-200 shadow-sm shrink-0"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-black text-slate-900">{cand.lorry.lorry_code}</span>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800">
-                                  Score: {cand.decision_score}/100
-                                </span>
+                          {/* Top: Lorry Avatar & Info */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3 min-w-0">
+                              <VehicleAvatar
+                                src={cand.lorry.image_url}
+                                lorryCode={cand.lorry.lorry_code}
+                                model={cand.lorry.model}
+                                isRefrigerated={cand.lorry.is_refrigerated}
+                                size="md"
+                              />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-black text-slate-900">{cand.lorry.lorry_code}</span>
+                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-100 text-blue-800">
+                                    Score: {cand.decision_score}/100
+                                  </span>
+                                </div>
+                                <span className="text-xs font-bold text-slate-700 block truncate">{cand.lorry.model}</span>
+                                <span className="text-[10px] text-slate-400 font-mono block">{cand.lorry.registration_number}</span>
                               </div>
-                              <span className="text-xs font-bold text-slate-700 block truncate">{cand.lorry.model}</span>
-                              <span className="text-[10px] text-slate-400 font-mono block">{cand.lorry.registration_number}</span>
                             </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewTruckDetails(cand.lorry);
+                              }}
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 text-[10px] font-black rounded-xl border border-slate-200 flex items-center gap-1 shadow-xs transition shrink-0"
+                              title="Inspect Full Vehicle Technical Specifications & Telematics"
+                            >
+                              <Eye className="w-3 h-3 text-blue-600" />
+                              <span>View Truck</span>
+                            </button>
                           </div>
 
-                          {/* Capacity Progress Bars */}
-                          <div className="space-y-2 text-[11px] bg-slate-50 p-2.5 rounded-2xl">
+                          {/* Live Visual Capacity Progress Bars */}
+                          <div className="space-y-2.5 text-[11px] bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
+                            {/* Payload Weight Bar */}
                             <div>
-                              <div className="flex justify-between font-bold text-slate-700 mb-0.5">
-                                <span>Payload Load</span>
-                                <span>{cand.weight_utilization_pct}% ({cand.remaining_weight.toLocaleString()} kg free)</span>
+                              <div className="flex justify-between items-center font-bold text-slate-800 text-[11px] mb-1">
+                                <span className="flex items-center gap-1 text-slate-600">
+                                  <Scale className="w-3.5 h-3.5 text-blue-600" />
+                                  <span>Payload Load</span>
+                                </span>
+                                <span className="font-mono text-xs">
+                                  <strong className={cand.weight_utilization_pct > 95 ? 'text-rose-600' : 'text-slate-900'}>
+                                    {cand.weight_utilization_pct}%
+                                  </strong>{' '}
+                                  <span className="text-slate-500 font-normal">
+                                    ({cand.remaining_weight.toLocaleString()} kg free of {cand.lorry.max_weight_kg.toLocaleString()} kg)
+                                  </span>
+                                </span>
                               </div>
-                              <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                              <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden p-0.5">
                                 <div
-                                  className={`h-full rounded-full transition-all ${
-                                    cand.weight_utilization_pct > 90 ? 'bg-amber-500' : 'bg-blue-600'
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    cand.weight_utilization_pct > 95
+                                      ? 'bg-rose-500'
+                                      : cand.weight_utilization_pct > 80
+                                      ? 'bg-amber-500'
+                                      : 'bg-gradient-to-r from-blue-600 to-indigo-600'
                                   }`}
-                                  style={{ width: `${cand.weight_utilization_pct}%` }}
+                                  style={{ width: `${Math.min(100, Math.max(4, cand.weight_utilization_pct))}%` }}
                                 />
                               </div>
                             </div>
 
+                            {/* Volume Space Bar */}
                             <div>
-                              <div className="flex justify-between font-bold text-slate-700 mb-0.5">
-                                <span>Volume Load</span>
-                                <span>{cand.volume_utilization_pct}% ({cand.remaining_volume} m³ free)</span>
+                              <div className="flex justify-between items-center font-bold text-slate-800 text-[11px] mb-1">
+                                <span className="flex items-center gap-1 text-slate-600">
+                                  <Layers className="w-3.5 h-3.5 text-purple-600" />
+                                  <span>Container Volume</span>
+                                </span>
+                                <span className="font-mono text-xs">
+                                  <strong className="text-purple-900">{cand.volume_utilization_pct}%</strong>{' '}
+                                  <span className="text-slate-500 font-normal">
+                                    ({cand.remaining_volume} m³ free of {cand.lorry.max_volume_m3} m³)
+                                  </span>
+                                </span>
                               </div>
-                              <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                              <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden p-0.5">
                                 <div
-                                  className="h-full rounded-full bg-purple-600 transition-all"
-                                  style={{ width: `${cand.volume_utilization_pct}%` }}
+                                  className="h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-500"
+                                  style={{ width: `${Math.min(100, Math.max(4, cand.volume_utilization_pct))}%` }}
                                 />
                               </div>
                             </div>
@@ -1001,33 +1047,37 @@ export default function ShipmentsPage() {
 
                           {/* Stats Grid */}
                           <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-600">
-                            <div>
+                            <div className="bg-white p-2 rounded-xl border border-slate-100">
                               <span className="text-slate-400 font-bold block">Efficiency</span>
                               <strong className="text-blue-600 font-black">{cand.lorry.fuel_efficiency_km_per_l} km/L</strong>
                             </div>
-                            <div>
+                            <div className="bg-white p-2 rounded-xl border border-slate-100">
                               <span className="text-slate-400 font-bold block">Pilot</span>
                               <strong className="text-slate-900 font-bold truncate block">{cand.driver?.name || 'Unassigned'}</strong>
                             </div>
-                            <div>
+                            <div className="bg-white p-2 rounded-xl border border-slate-100">
                               <span className="text-slate-400 font-bold block">Pickup Dist</span>
                               <strong className="text-slate-900 font-bold">{cand.distance_to_pickup_km} km</strong>
                             </div>
                           </div>
 
                           {/* Feasibility tags */}
-                          <div className="flex items-center gap-2 pt-1">
+                          <div className="flex items-center justify-between pt-1">
                             {cand.is_feasible ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 100% FEASIBLE
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
                                 <AlertTriangle className="w-3.5 h-3.5" />
                                 INSUFFICIENT CAPACITY
                               </span>
                             )}
+
+                            <span className="text-[10px] font-bold text-slate-400">
+                              Est. ₹{Math.round(cand.distance_to_pickup_km * 18 + 800).toLocaleString()}
+                            </span>
                           </div>
                         </div>
                       );
@@ -1144,6 +1194,94 @@ export default function ShipmentsPage() {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* View Truck Quick Inspect Modal */}
+        {viewTruckDetails && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in my-auto">
+              <div className="p-6 bg-slate-900 text-white flex items-start justify-between relative overflow-hidden">
+                <div className="flex items-center gap-3 z-10">
+                  <VehicleAvatar
+                    src={viewTruckDetails.image_url}
+                    lorryCode={viewTruckDetails.lorry_code}
+                    model={viewTruckDetails.model}
+                    isRefrigerated={viewTruckDetails.is_refrigerated}
+                    size="lg"
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-mono text-[10px] font-black border border-blue-400/30 uppercase">
+                        {viewTruckDetails.lorry_code}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                        viewTruckDetails.status === 'AVAILABLE'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                      }`}>
+                        {viewTruckDetails.status}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-black text-white mt-1">{viewTruckDetails.model}</h3>
+                    <span className="text-xs text-slate-400 font-mono">{viewTruckDetails.registration_number}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setViewTruckDetails(null)}
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition z-10"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4 text-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Max Payload</span>
+                    <strong className="text-base font-black text-slate-900">{viewTruckDetails.max_weight_kg.toLocaleString()} kg</strong>
+                    <span className="text-[10px] text-slate-500 block">Gross capacity</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Container Bay</span>
+                    <strong className="text-base font-black text-slate-900">{viewTruckDetails.max_volume_m3} m³</strong>
+                    <span className="text-[10px] text-slate-500 block">Enclosed volume</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Fuel Mileage</span>
+                    <strong className="text-sm font-black text-blue-600">{viewTruckDetails.fuel_efficiency_km_per_l} km / Liter</strong>
+                    <span className="text-[10px] text-slate-500 block">Commercial Diesel</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Refrigeration</span>
+                    <strong className="text-sm font-black text-slate-900">
+                      {viewTruckDetails.is_refrigerated ? 'Reefer Cold-Chain' : 'Ambient Dry Cargo'}
+                    </strong>
+                    <span className="text-[10px] text-slate-500 block">Temperature spec</span>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200 space-y-1">
+                  <span className="text-[10px] text-blue-700 font-bold uppercase tracking-wider block">Live Hardware GPS Terminal</span>
+                  <p className="text-slate-900 font-bold text-xs">{viewTruckDetails.current_address || 'Designated Regional Hub Depot'}</p>
+                  <span className="text-[10px] text-slate-500 font-mono block">
+                    Lat: {viewTruckDetails.current_lat.toFixed(4)}, Lng: {viewTruckDetails.current_lng.toFixed(4)}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setViewTruckDetails(null)}
+                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-card transition"
+                >
+                  Close Truck Inspector
+                </button>
+              </div>
             </div>
           </div>
         )}

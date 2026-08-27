@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
 import { Lorry, LorryStatus } from '../../../lib/optimization/types';
-import { Truck, Plus, X, Fuel, Gauge, CheckCircle2, Trash2 } from 'lucide-react';
+import { Truck, Plus, X, Fuel, Gauge, CheckCircle2, Trash2, Camera } from 'lucide-react';
+import { VehicleAvatar, VEHICLE_PRESET_IMAGES } from '../../../components/brand/vehicle-avatar';
 
 export default function AdminFleetPage() {
   const [lorries, setLorries] = useState<Lorry[]>(fleetMindStore.getLorries());
@@ -13,6 +14,7 @@ export default function AdminFleetPage() {
     lorry_code: '',
     registration_number: '',
     model: 'Eicher Pro 2059 (6 Ton)',
+    image_url: VEHICLE_PRESET_IMAGES[0].url,
     max_weight_kg: 6000,
     max_volume_m3: 24,
     fuel_efficiency_km_per_l: 9.5,
@@ -32,6 +34,7 @@ export default function AdminFleetPage() {
       lorry_code: form.lorry_code,
       registration_number: form.registration_number,
       model: form.model,
+      image_url: form.image_url || undefined,
       max_weight_kg: Number(form.max_weight_kg),
       max_volume_m3: Number(form.max_volume_m3),
       fuel_efficiency_km_per_l: Number(form.fuel_efficiency_km_per_l),
@@ -71,7 +74,7 @@ export default function AdminFleetPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
                 <tr>
-                  <th className="py-3.5 px-6">Code</th>
+                  <th className="py-3.5 px-6">Vehicle Unit</th>
                   <th className="py-3.5 px-6">Registration</th>
                   <th className="py-3.5 px-6">Model & Make</th>
                   <th className="py-3.5 px-6">Max Payload</th>
@@ -84,8 +87,18 @@ export default function AdminFleetPage() {
               <tbody className="divide-y divide-slate-100 font-medium">
                 {lorries.map((l) => (
                   <tr key={l.id} className="hover:bg-slate-50 transition">
-                    <td className="py-3.5 px-6 font-black text-slate-900">{l.lorry_code}</td>
-                    <td className="py-3.5 px-6 font-bold text-slate-700">{l.registration_number}</td>
+                    <td className="py-3 px-6">
+                      <div className="flex items-center gap-3">
+                        <VehicleAvatar
+                          src={l.image_url}
+                          lorryCode={l.lorry_code}
+                          model={l.model}
+                          size="sm"
+                        />
+                        <span className="font-black text-slate-900 text-sm">{l.lorry_code}</span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-6 font-bold text-slate-700 font-mono">{l.registration_number}</td>
                     <td className="py-3.5 px-6 text-slate-600">{l.model}</td>
                     <td className="py-3.5 px-6 font-semibold text-slate-900">{l.max_weight_kg.toLocaleString()} kg</td>
                     <td className="py-3.5 px-6">{l.max_volume_m3} m³</td>
@@ -123,13 +136,13 @@ export default function AdminFleetPage() {
           </div>
         </div>
 
-        {/* Add Lorry Modal */}
+        {/* Register Vehicle Modal */}
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 animate-in fade-in my-auto">
               <div className="bg-purple-600 p-5 text-white flex items-center justify-between">
                 <h3 className="text-base font-bold flex items-center gap-2">
-                  <Truck className="w-5 h-5" /> Register Vehicle
+                  <Truck className="w-5 h-5" /> Register Vehicle & Set DP
                 </h3>
                 <button onClick={() => setIsAddModalOpen(false)} className="text-white/80 hover:text-white">
                   <X className="w-4 h-4" />
@@ -137,6 +150,52 @@ export default function AdminFleetPage() {
               </div>
 
               <form onSubmit={handleCreateLorry} className="p-6 space-y-4 text-xs">
+                {/* Vehicle DP Section */}
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-slate-900 uppercase text-[10px] flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-purple-600" />
+                      Vehicle Profile DP / Photo
+                    </span>
+                    <span className="text-[10px] text-slate-400">Presets Available</span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <VehicleAvatar
+                      src={form.image_url}
+                      lorryCode={form.lorry_code || 'L-XX'}
+                      model={form.model}
+                      size="lg"
+                    />
+
+                    <div className="flex-1 space-y-2">
+                      <input
+                        type="url"
+                        placeholder="Paste vehicle image URL..."
+                        value={form.image_url || ''}
+                        onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-medium"
+                      />
+                      <div className="flex flex-wrap gap-1">
+                        {VEHICLE_PRESET_IMAGES.map((preset) => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => setForm({ ...form, image_url: preset.url })}
+                            className={`px-2 py-0.5 rounded-lg text-[9px] font-bold border transition ${
+                              form.image_url === preset.url
+                                ? 'bg-purple-600 text-white border-purple-600'
+                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {preset.name.split(' ')[0]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block font-bold text-slate-700 uppercase mb-1">Lorry Code</label>

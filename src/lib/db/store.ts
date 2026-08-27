@@ -266,7 +266,31 @@ class FleetMindStore {
       setTimeout(() => {
         initSupabaseStoreSync();
       }, 50);
+
+      this.startAutonomousDispatchDaemon();
     }
+  }
+
+  private startAutonomousDispatchDaemon(): void {
+    if (typeof window === 'undefined') return;
+    setInterval(() => {
+      const settings = this.getSystemSettings();
+      if (settings.auto_dispatch_critical === false) return;
+      const now = Date.now();
+      const unassignedCriticals = this.shipments.filter(
+        (s) =>
+          s.priority === 'CRITICAL' &&
+          !s.assigned_lorry_id &&
+          (s.status === 'PENDING_REVIEW' || s.status === 'PENDING' || s.status === 'PENDING_DISPATCH')
+      );
+      for (const s of unassignedCriticals) {
+        const createdAtMs = new Date(s.created_at || now).getTime();
+        // If 1 minute (60 seconds) elapsed without manual dispatcher assignment, auto-dispatch!
+        if (now - createdAtMs >= 60000) {
+          this.tryAutoDispatchShipment(s.id);
+        }
+      }
+    }, 3000);
   }
 
   private loadFromLocalStorage() {

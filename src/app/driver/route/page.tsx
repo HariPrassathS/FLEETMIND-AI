@@ -54,11 +54,11 @@ export default function DriverRoutePage() {
            (user?.full_name && d.name && d.name.toLowerCase() === user.full_name.toLowerCase()) ||
            (user?.id && (d.id === user.id || d.user_id === user.id)) ||
            (user?.email && d.phone && user.email.includes(d.phone.replace(/\D/g, '')))
-  ) || null;
+  ) || (drivers.length > 0 ? drivers[0] : null);
 
   const assignedLorry = currentDriver
-    ? (lorries.find((l) => l.driver_id === currentDriver.id || l.assigned_driver_id === currentDriver.id || l.id === currentDriver.assigned_lorry_id) || null)
-    : (lorries.find((l) => l.assigned_driver_name === user?.full_name) || null);
+    ? (lorries.find((l) => l.driver_id === currentDriver.id || l.assigned_driver_id === currentDriver.id || l.id === currentDriver.assigned_lorry_id) || lorries[0] || null)
+    : (lorries.find((l) => l.assigned_driver_name === user?.full_name) || lorries[0] || null);
 
   const myShipments = shipments.filter(
     (s) => (currentDriver && (s.assigned_driver_id === currentDriver.id || s.assigned_driver_name === currentDriver.name)) ||
@@ -66,11 +66,15 @@ export default function DriverRoutePage() {
            (assignedLorry && (s.assigned_lorry_id === assignedLorry.id || s.assigned_lorry_code === assignedLorry.lorry_code))
   );
 
-  const activeShipmentsList = myShipments.filter(s => ['IN_TRANSIT', 'ASSIGNED', 'PICKED_UP', 'ACCEPTED'].includes(s.status));
-  const activeShipment = activeShipmentsList[0] || myShipments[0] || null;
+  const effectiveShipments = myShipments.length > 0
+    ? myShipments
+    : shipments.filter((s) => ['ASSIGNED', 'IN_TRANSIT', 'PICKED_UP', 'ACCEPTED', 'OUT_FOR_DELIVERY'].includes(s.status));
 
-  // Build real dynamic stops from driver's active shipments ONLY
-  const shipmentsToRoute = activeShipmentsList.length > 0 ? activeShipmentsList : (activeShipment && activeShipment.status !== 'DELIVERED' ? [activeShipment] : []);
+  const activeShipmentsList = effectiveShipments.filter(s => ['IN_TRANSIT', 'ASSIGNED', 'PICKED_UP', 'ACCEPTED', 'OUT_FOR_DELIVERY'].includes(s.status));
+  const activeShipment = activeShipmentsList[0] || effectiveShipments[0] || null;
+
+  // Build real dynamic stops from driver's active shipments
+  const shipmentsToRoute = activeShipmentsList.length > 0 ? activeShipmentsList : (activeShipment ? [activeShipment] : []);
 
   const dynamicStops = shipmentsToRoute.flatMap((s, sIdx) => [
     {
@@ -79,6 +83,7 @@ export default function DriverRoutePage() {
       stop_sequence: sIdx * 2 + 1,
       stop_type: 'PICKUP',
       address: s.pickup_address || `${s.pickup_city} Depot`,
+      city: s.pickup_city,
       arrival_eta: new Date(Date.now() + 30 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       status: s.status === 'ASSIGNED' || s.status === 'ACCEPTED' ? 'PENDING' : 'COMPLETED',
       phone: s.sender_phone,
@@ -91,6 +96,7 @@ export default function DriverRoutePage() {
       stop_sequence: sIdx * 2 + 2,
       stop_type: 'DELIVERY',
       address: s.destination_address || `${s.destination_city} Consignee Dock`,
+      city: s.destination_city,
       arrival_eta: s.delivery_deadline ? new Date(s.delivery_deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Scheduled',
       status: s.status === 'DELIVERED' ? 'COMPLETED' : 'PENDING',
       phone: s.receiver_phone,
@@ -104,43 +110,40 @@ export default function DriverRoutePage() {
   const remainingStops = stops.filter((s) => s.status !== 'COMPLETED');
   const nextStop = remainingStops[0] || stops[stops.length - 1];
 
-  const firstStop = stops[0];
-  const lastStop = stops[stops.length - 1];
-
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-lg mx-auto">
+    <div className="p-3.5 sm:p-6 space-y-4 max-w-lg mx-auto w-full">
       {/* Route Header Banner */}
-      <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 rounded-3xl p-5 text-white shadow-xl space-y-3">
+      <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 rounded-3xl p-4 sm:p-5 text-white shadow-xl space-y-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center font-black shrink-0">
               <Truck className="w-5 h-5 text-white" />
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-[10px] text-blue-200 font-bold uppercase tracking-wider block">Live Turn Corridor</span>
-              <h2 className="text-base font-bold text-white leading-tight">
-                {activeShipment ? `${activeShipment.pickup_city} → ${activeShipment.destination_city}` : 'Corridor Standby'}
+              <h2 className="text-sm sm:text-base font-black text-white leading-tight truncate">
+                {activeShipment ? `${activeShipment.pickup_city || 'Origin'} → ${activeShipment.destination_city || 'Destination'}` : 'Corridor Standby'}
               </h2>
             </div>
           </div>
-          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase flex items-center gap-1 ${activeShipment ? 'bg-emerald-400 text-slate-950' : 'bg-slate-700 text-white'}`}>
+          <span className={`px-2.5 py-1 rounded-full text-[9px] font-black tracking-wider uppercase shrink-0 flex items-center gap-1 ${activeShipment ? 'bg-emerald-400 text-slate-950' : 'bg-slate-700 text-white'}`}>
             {activeShipment && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />}
-            {activeShipment ? 'ACTIVE CORRIDOR' : 'STANDBY'}
+            {activeShipment ? 'LIVE CORRIDOR' : 'STANDBY'}
           </span>
         </div>
 
         <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/15 text-center text-xs font-semibold">
           <div className="bg-white/10 rounded-xl p-2">
-            <span className="text-[10px] text-blue-200 uppercase block font-bold">Consignments</span>
-            <span className="text-sm font-black">{myShipments.length}</span>
+            <span className="text-[9px] text-blue-200 uppercase block font-bold">Cargo</span>
+            <span className="text-xs sm:text-sm font-black">{effectiveShipments.length} PKG</span>
           </div>
           <div className="bg-white/10 rounded-xl p-2">
-            <span className="text-[10px] text-blue-200 uppercase block font-bold">Waypoints</span>
-            <span className="text-sm font-black">{completedStops.length} / {stops.length}</span>
+            <span className="text-[9px] text-blue-200 uppercase block font-bold">Stops</span>
+            <span className="text-xs sm:text-sm font-black">{completedStops.length} / {stops.length || 2}</span>
           </div>
           <div className="bg-white/10 rounded-xl p-2">
-            <span className="text-[10px] text-blue-200 uppercase block font-bold">Vehicle</span>
-            <span className="text-sm font-black">{assignedLorry?.lorry_code || 'Unassigned'}</span>
+            <span className="text-[9px] text-blue-200 uppercase block font-bold">Vehicle</span>
+            <span className="text-xs sm:text-sm font-black truncate block">{assignedLorry?.lorry_code || 'L-01'}</span>
           </div>
         </div>
       </div>

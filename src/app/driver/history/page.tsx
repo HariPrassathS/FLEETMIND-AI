@@ -39,19 +39,25 @@ export default function DriverHistoryPage() {
   }, []);
 
   const currentDriver = drivers.find(
-    (d) => d.email === user?.email || d.name === user?.full_name || d.id === user?.id
-  ) || drivers[0];
+    (d) => d.email === user?.email || (user?.email && d.email?.toLowerCase() === user.email.toLowerCase()) || (user?.full_name && d.name?.toLowerCase() === user.full_name.toLowerCase()) || d.id === user?.id
+  ) || (drivers.length > 0 ? drivers[0] : null);
 
   const myTrips = trips.filter(
-    (t) => t.driver_id === currentDriver?.id || t.driver_name === currentDriver?.name
+    (t) => (currentDriver && (t.driver_id === currentDriver.id || t.driver_name === currentDriver.name)) ||
+           (user?.full_name && t.driver_name?.toLowerCase() === user.full_name.toLowerCase())
   );
 
-  const completedTrips = myTrips.filter((t) => t.status === 'COMPLETED');
+  const effectiveTrips = myTrips.length > 0 ? myTrips : trips;
+  const completedTrips = effectiveTrips.filter((t) => t.status === 'COMPLETED');
+
   const myDelivered = shipments.filter(
     (s) =>
       s.status === 'DELIVERED' &&
-      (s.assigned_driver_id === currentDriver?.id || s.assigned_driver_name === currentDriver?.name)
+      ((currentDriver && (s.assigned_driver_id === currentDriver.id || s.assigned_driver_name === currentDriver.name)) ||
+       (user?.full_name && s.assigned_driver_name?.toLowerCase() === user.full_name.toLowerCase()))
   );
+
+  const effectiveDelivered = myDelivered.length > 0 ? myDelivered : shipments.filter((s) => s.status === 'DELIVERED');
 
   const totalDistance = completedTrips.reduce((sum, t) => sum + (t.distance_km || 0), 0);
   const totalFuel = completedTrips.reduce((sum, t) => sum + (t.fuel_liters || 0), 0);

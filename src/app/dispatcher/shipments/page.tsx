@@ -398,10 +398,10 @@ export default function ShipmentsPage() {
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-500 shadow-purple-200'
                   : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
               }`}
-              title="When enabled, any Critical priority consignment is automatically assigned to the best vehicle & pilot without waiting for manual dispatcher approval"
+              title="When enabled, any Critical priority consignment unassigned for 1 minute is automatically dispatched to the fastest carrier"
             >
               <Zap className={`w-3.5 h-3.5 ${autoDispatchCritical ? 'text-amber-300 fill-current animate-bounce' : 'text-slate-400'}`} />
-              <span>⚡ Auto-Dispatch Critical: <strong className={autoDispatchCritical ? 'text-amber-300' : 'text-slate-800'}>{autoDispatchCritical ? 'ON (Active)' : 'OFF'}</strong></span>
+              <span>⚡ Auto-Dispatch Critical: <strong className={autoDispatchCritical ? 'text-amber-300' : 'text-slate-800'}>{autoDispatchCritical ? 'ON (1-Min Fail-Safe)' : 'OFF'}</strong></span>
             </button>
 
             <Link
@@ -454,11 +454,11 @@ export default function ShipmentsPage() {
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] font-black uppercase tracking-wider text-slate-500">
                   <th className="py-3.5 px-4">Consignment Code</th>
-                  <th className="py-3.5 px-4">Customer & Cargo</th>
-                  <th className="py-3.5 px-4">Corridor (Origin ➔ Dest)</th>
-                  <th className="py-3.5 px-4">Weight & Volume</th>
-                  <th className="py-3.5 px-4">Priority & SLA</th>
-                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Client & Commodity</th>
+                  <th className="py-3.5 px-4">Route Corridor</th>
+                  <th className="py-3.5 px-4">Freight Mass</th>
+                  <th className="py-3.5 px-4">Priority SLA</th>
+                  <th className="py-3.5 px-4">Dispatch Status</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -466,33 +466,26 @@ export default function ShipmentsPage() {
                 {filteredShipments.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-slate-400 font-semibold">
-                      No consignments match the selected criteria.
+                      No consignments match the current filter criteria.
                     </td>
                   </tr>
                 ) : (
                   filteredShipments.map((s) => {
+                    const createdAtMs = new Date(s.created_at || Date.now()).getTime();
+                    const elapsedSec = Math.floor((Date.now() - createdAtMs) / 1000);
+                    const remainingSec = Math.max(0, 60 - elapsedSec);
+
                     return (
                       <tr key={s.id} className="hover:bg-slate-50/60 transition group">
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                              <Package className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <span className="font-black text-slate-900 block leading-tight">{s.shipment_code}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                {new Date(s.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                              </span>
-                            </div>
-                          </div>
+                        <td className="py-4 px-4 font-mono font-black text-blue-600 text-xs">
+                          {s.shipment_code}
                         </td>
 
                         <td className="py-4 px-4">
                           <div className="space-y-0.5">
-                            <span className="font-black text-slate-900 block truncate max-w-[180px]">
-                              {s.customer_name || 'Commercial Shipper'}
-                            </span>
-                            <span className="text-[11px] text-slate-500 font-medium truncate max-w-[180px] block">
+                            <span className="font-bold text-slate-900 block">{s.customer_name || 'Enterprise Consignee'}</span>
+                            <span className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">
+                              <Package className="w-3 h-3 text-slate-400" />
                               {s.description}
                             </span>
                           </div>
@@ -519,6 +512,12 @@ export default function ShipmentsPage() {
                         <td className="py-4 px-4">
                           <div className="space-y-1">
                             {getPriorityBadge(s.priority)}
+                            {s.priority === 'CRITICAL' && !s.assigned_lorry_id && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 font-mono text-[9px] font-black border border-purple-200 animate-pulse">
+                                <Clock className="w-2.5 h-2.5 text-purple-700" />
+                                Auto in {remainingSec}s
+                              </span>
+                            )}
                             <span className="text-[10px] text-slate-500 font-medium block">
                               By {new Date(s.delivery_deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
@@ -540,23 +539,6 @@ export default function ShipmentsPage() {
                             >
                               Review Details
                             </button>
-
-                            {/* Autonomous Instant Auto-Assign button for unassigned Critical shipments */}
-                            {s.priority === 'CRITICAL' && !s.assigned_lorry_id && (
-                              <button
-                                onClick={() => {
-                                  const assigned = fleetMindStore.tryAutoDispatchShipment(s.id);
-                                  if (assigned) {
-                                    setSuccessToast(`⚡ Emergency Load ${s.shipment_code} Auto-Assigned to ${assigned.assigned_lorry_code}!`);
-                                    setTimeout(() => setSuccessToast(null), 3500);
-                                  }
-                                }}
-                                className="px-3 py-1.5 bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-700 hover:to-purple-700 text-white font-black rounded-xl shadow-md transition text-[11px] flex items-center gap-1.5 animate-pulse shrink-0"
-                              >
-                                <Zap className="w-3.5 h-3.5 fill-current text-amber-300" />
-                                <span>Auto-Assign</span>
-                              </button>
-                            )}
 
                             {!s.assigned_lorry_id ? (
                               <button

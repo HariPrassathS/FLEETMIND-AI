@@ -441,6 +441,44 @@ export function LiveTrackingMapbox({
             </button>
           </div>
         )}
+
+        {/* Floating Map Zoom & Recenter Controls */}
+        <div className="absolute bottom-4 right-4 z-[500] flex flex-col gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200 shadow-card">
+          <button
+            type="button"
+            onClick={() => mapInstanceRef.current?.zoomIn()}
+            className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-800 font-black text-base flex items-center justify-center transition shadow-xs"
+            title="Zoom In"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => mapInstanceRef.current?.zoomOut()}
+            className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-800 font-black text-base flex items-center justify-center transition shadow-xs"
+            title="Zoom Out"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (mapInstanceRef.current) {
+                mapInstanceRef.current.fitBounds(
+                  [
+                    [origin.lat, origin.lng],
+                    [destination.lat, destination.lng],
+                  ],
+                  { padding: [50, 50], maxZoom: 14 }
+                );
+              }
+            }}
+            className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-800 flex items-center justify-center transition shadow-xs"
+            title="Recenter Highway Corridor"
+          >
+            <Compass className="w-4 h-4 text-blue-600" />
+          </button>
+        </div>
       </div>
 
       {/* Real-time Hardware Telemetry Bar */}

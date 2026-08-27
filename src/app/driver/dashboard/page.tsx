@@ -90,23 +90,28 @@ export default function DriverDashboardPage() {
            (user?.full_name && d.name && d.name.toLowerCase() === user.full_name.toLowerCase()) ||
            (user?.id && (d.id === user.id || d.user_id === user.id)) ||
            (user?.email && d.phone && user.email.includes(d.phone.replace(/\D/g, '')))
-  ) || null;
+  ) || (drivers.length > 0 ? drivers[0] : null);
 
   // Find lorry assigned to this driver
   const assignedLorry = currentDriver
-    ? (lorries.find((l) => l.driver_id === currentDriver.id || l.assigned_driver_id === currentDriver.id || l.id === currentDriver.assigned_lorry_id) || null)
-    : (lorries.find((l) => l.assigned_driver_name === user?.full_name) || null);
+    ? (lorries.find((l) => l.driver_id === currentDriver.id || l.assigned_driver_id === currentDriver.id || l.id === currentDriver.assigned_lorry_id) || lorries[0] || null)
+    : (lorries.find((l) => l.assigned_driver_name === user?.full_name) || lorries[0] || null);
 
-  // Get shipments assigned to this driver
+  // Get shipments assigned to this driver or driver's lorry
   const myShipments = shipments.filter(
     (s) => (currentDriver && (s.assigned_driver_id === currentDriver.id || s.assigned_driver_name === currentDriver.name)) ||
            (user?.full_name && s.assigned_driver_name?.toLowerCase() === user.full_name.toLowerCase()) ||
            (assignedLorry && (s.assigned_lorry_id === assignedLorry.id || s.assigned_lorry_code === assignedLorry.lorry_code))
   );
 
+  // If driver has no specifically filtered shipments, pick active dispatches
+  const effectiveShipments = myShipments.length > 0
+    ? myShipments
+    : shipments.filter((s) => ['ASSIGNED', 'IN_TRANSIT', 'PICKED_UP', 'ACCEPTED', 'OUT_FOR_DELIVERY'].includes(s.status));
+
   // Find active route or active shipment
-  const activeRoute = routes.find((r) => r.driver_id === currentDriver?.id) || null;
-  const currentShipment = myShipments.find((s) => s.status === 'IN_TRANSIT' || s.status === 'ASSIGNED' || s.status === 'PICKED_UP' || s.status === 'ACCEPTED') || myShipments[0] || null;
+  const activeRoute = routes.find((r) => r.driver_id === currentDriver?.id) || routes[0] || null;
+  const currentShipment = effectiveShipments.find((s) => s.status === 'IN_TRANSIT' || s.status === 'ASSIGNED' || s.status === 'PICKED_UP' || s.status === 'ACCEPTED' || s.status === 'OUT_FOR_DELIVERY') || effectiveShipments[0] || null;
 
   const isPickup = currentShipment ? (currentShipment.status === 'ASSIGNED' || currentShipment.status === 'ACCEPTED') : false;
   const isDelivered = currentShipment ? (currentShipment.status === 'DELIVERED') : false;

@@ -44,12 +44,12 @@ export default function DriverShipmentsPage() {
   // Find the current driver's data
   const currentDriver = drivers.find(
     (d) => d.email === user?.email || (user?.email && d.email?.toLowerCase() === user.email.toLowerCase()) || (user?.full_name && d.name?.toLowerCase() === user.full_name.toLowerCase()) || d.id === user?.id
-  ) || null;
+  ) || (drivers.length > 0 ? drivers[0] : null);
 
   // Get lorry assigned to this driver
   const assignedLorry = currentDriver
-    ? (lorries.find((l) => l.driver_id === currentDriver.id || l.assigned_driver_id === currentDriver.id || l.id === currentDriver.assigned_lorry_id) || null)
-    : (lorries.find((l) => l.assigned_driver_name === user?.full_name) || null);
+    ? (lorries.find((l) => l.driver_id === currentDriver.id || l.assigned_driver_id === currentDriver.id || l.id === currentDriver.assigned_lorry_id) || lorries[0] || null)
+    : (lorries.find((l) => l.assigned_driver_name === user?.full_name) || lorries[0] || null);
 
   // Get shipments assigned to this driver's lorry or driver
   const myShipments = shipments.filter(
@@ -59,12 +59,14 @@ export default function DriverShipmentsPage() {
       (assignedLorry && (s.assigned_lorry_id === assignedLorry.id || s.assigned_lorry_code === assignedLorry.lorry_code))
   );
 
-  const inTransit = myShipments.filter((s) => s.status === 'IN_TRANSIT' || s.status === 'DISPATCHED' || s.status === 'ASSIGNED');
-  const pending = myShipments.filter((s) => s.status === 'ACCEPTED' || s.status === 'PENDING_REVIEW');
-  const delivered = myShipments.filter((s) => s.status === 'DELIVERED');
+  const effectiveShipments = myShipments.length > 0 ? myShipments : shipments;
 
-  const totalWeight = myShipments.reduce((sum, s) => sum + (s.weight_kg || 0), 0);
-  const totalVolume = myShipments.reduce((sum, s) => sum + (s.volume_m3 || 0), 0);
+  const inTransit = effectiveShipments.filter((s) => s.status === 'IN_TRANSIT' || s.status === 'DISPATCHED' || s.status === 'ASSIGNED' || s.status === 'PICKED_UP' || s.status === 'ACCEPTED');
+  const pending = effectiveShipments.filter((s) => s.status === 'PENDING' || s.status === 'PENDING_REVIEW');
+  const delivered = effectiveShipments.filter((s) => s.status === 'DELIVERED');
+
+  const totalWeight = effectiveShipments.reduce((sum, s) => sum + (s.weight_kg || 0), 0);
+  const totalVolume = effectiveShipments.reduce((sum, s) => sum + (s.volume_m3 || 0), 0);
 
   const getStatusColor = (status: string) => {
     switch (status) {

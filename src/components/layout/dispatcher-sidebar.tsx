@@ -25,6 +25,7 @@ import {
   LogOut,
   X,
   Compass,
+  User,
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth/auth-context';
 import { BrandLogo } from '../brand/brand-logo';
@@ -74,6 +75,7 @@ const DISPATCHER_SECTIONS: NavSection[] = [
       { href: '/dispatcher/documents', label: 'Compliance Docs', icon: FileText },
       { href: '/dispatcher/notifications', label: 'Notifications', icon: Bell },
       { href: '/dispatcher/copilot', label: 'FleetMind AI', icon: Bot, isAi: true },
+      { href: '/dispatcher/profile', label: 'Dispatcher Profile', icon: User },
     ],
   },
 ];
@@ -187,8 +189,13 @@ export function DispatcherSidebar({ isOpen, onClose }: DispatcherSidebarProps) {
 
       {/* 3. User Card & Sign Out Footer (Fixed Bottom) */}
       <div className="shrink-0 p-3 border-t border-slate-100 space-y-2 bg-slate-50/50">
-        {/* User Card */}
-        <div className="flex items-center gap-2.5 px-2.5 py-2 bg-white rounded-xl border border-slate-200/80 shadow-xs">
+        {/* User Card Link to Profile */}
+        <Link
+          href="/dispatcher/profile"
+          onClick={handleClose}
+          className="flex items-center gap-2.5 px-2.5 py-2 bg-white hover:bg-blue-50/60 rounded-xl border border-slate-200/80 shadow-xs transition group cursor-pointer"
+          title="View & Edit Dispatcher Profile"
+        >
           <UserAvatar
             src={user?.avatar_url}
             name={user?.full_name}
@@ -196,14 +203,15 @@ export function DispatcherSidebar({ isOpen, onClose }: DispatcherSidebarProps) {
             size="sm"
           />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-black text-slate-900 truncate leading-tight">
+            <p className="text-xs font-black text-slate-900 group-hover:text-blue-600 transition truncate leading-tight">
               {user?.full_name || 'Dispatcher Lead'}
             </p>
             <p className="text-[10px] text-slate-500 truncate mt-0.5">
               {user?.email || 'dispatcher@fleetmind.ai'}
             </p>
           </div>
-        </div>
+          <span className="text-[10px] font-bold text-slate-400 group-hover:text-blue-600 transition">➔</span>
+        </Link>
 
         {/* Dedicated Sign Out Button */}
         <button

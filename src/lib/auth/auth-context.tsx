@@ -71,6 +71,7 @@ export function getRoleDashboardPath(role?: UserRole | null): string {
 }
 
 export const SYSTEM_ADMIN_UIDS = ['Mv2VcEbnG9dtzFxxS6twdO2DKGG3'];
+export const SYSTEM_MANAGER_UIDS = ['xCQEV4tTJUMaavZaK2qxxMUCJ922'];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(() => {
@@ -95,11 +96,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setFirebaseUser(fbUser);
       if (fbUser && fbUser.email) {
         const isAdminUid = SYSTEM_ADMIN_UIDS.includes(fbUser.uid);
+        const isManagerUid = SYSTEM_MANAGER_UIDS.includes(fbUser.uid);
+        const targetRole: UserRole = isAdminUid ? 'ADMIN' : isManagerUid ? 'MANAGER' : 'CUSTOMER';
+
         let profile = fleetMindStore.getUserByEmail(fbUser.email);
         if (profile) {
           profile.firebase_uid = fbUser.uid;
           if (isAdminUid) {
             profile.role = 'ADMIN';
+          } else if (isManagerUid) {
+            profile.role = 'MANAGER';
           }
           if (fbUser.photoURL) {
             profile.avatar_url = fbUser.photoURL;
@@ -110,8 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: `user-${fbUser.uid}`,
             firebase_uid: fbUser.uid,
             email: fbUser.email,
-            full_name: fbUser.displayName || (isAdminUid ? 'System Administrator' : fbUser.email.split('@')[0]),
-            role: isAdminUid ? 'ADMIN' : 'CUSTOMER',
+            full_name: fbUser.displayName || (isAdminUid ? 'System Administrator' : isManagerUid ? 'Executive Manager' : fbUser.email.split('@')[0]),
+            role: targetRole,
             avatar_url: fbUser.photoURL || undefined,
             is_active: true,
             is_verified: true,
@@ -158,18 +164,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const isAdminUid = fbUid && SYSTEM_ADMIN_UIDS.includes(fbUid);
+      const isManagerUid = fbUid && SYSTEM_MANAGER_UIDS.includes(fbUid);
 
       // 2. Fetch authoritative user profile from database store
       let profile = fleetMindStore.getUserByEmail(email);
       if (!profile) {
         const assignedRole: UserRole = isAdminUid
           ? 'ADMIN'
+          : isManagerUid
+          ? 'MANAGER'
           : email.includes('admin')
           ? 'ADMIN'
-          : email.includes('driver')
-          ? 'DRIVER'
           : email.includes('manager')
           ? 'MANAGER'
+          : email.includes('driver')
+          ? 'DRIVER'
           : email.includes('customer') || email.includes('shipper')
           ? 'CUSTOMER'
           : 'DISPATCHER';
@@ -191,6 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (fbUid) profile.firebase_uid = fbUid;
         if (fbPhoto) profile.avatar_url = fbPhoto;
         if (isAdminUid) profile.role = 'ADMIN';
+        if (isManagerUid) profile.role = 'MANAGER';
       }
 
       if (!profile.is_active) {
@@ -245,20 +255,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const isAdminUid = fbUid && SYSTEM_ADMIN_UIDS.includes(fbUid);
+      const isManagerUid = fbUid && SYSTEM_MANAGER_UIDS.includes(fbUid);
+      const targetRole: UserRole = isAdminUid ? 'ADMIN' : isManagerUid ? 'MANAGER' : 'CUSTOMER';
 
       let profile = fleetMindStore.getUserByEmail(googleEmail);
       if (!profile) {
         profile = fleetMindStore.createUser({
           email: googleEmail,
           full_name: googleName,
-          role: isAdminUid ? 'ADMIN' : 'CUSTOMER',
+          role: targetRole,
           avatar_url: googlePhoto,
           firebase_uid: fbUid,
           is_active: true,
           is_verified: true,
         });
 
-        if (!isAdminUid) {
+        if (!isAdminUid && !isManagerUid) {
           fleetMindStore.createCustomer({
             user_id: profile.id,
             contact_name: googleName,
@@ -274,6 +286,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (googlePhoto) profile.avatar_url = googlePhoto;
         if (isAdminUid) {
           profile.role = 'ADMIN';
+        } else if (isManagerUid) {
+          profile.role = 'MANAGER';
         }
       }
 

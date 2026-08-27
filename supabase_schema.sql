@@ -681,3 +681,22 @@ INSERT INTO profiles (
 ) ON CONFLICT (firebase_uid) DO UPDATE 
 SET role = 'ADMIN', is_active = true, is_verified = true;
 
+-- Canonical Executive Manager Profile
+INSERT INTO profiles (
+    firebase_uid,
+    email,
+    full_name,
+    role,
+    is_active,
+    is_verified
+) VALUES (
+    'xCQEV4tTJUMaavZaK2qxxMUCJ922',
+    'manager@fleetmind.ai',
+    'Executive Manager',
+    'MANAGER',
+    true,
+    true
+) ON CONFLICT (firebase_uid) DO UPDATE 
+SET role = 'MANAGER', is_active = true, is_verified = true;
+
+

@@ -45,7 +45,7 @@ export const SEED_AUDIT_LOGS: AuditLog[] = [];
 class FleetMindStore {
   private users: UserProfile[] = [];
   private customers: any[] = [];
-  private lorries: Lorry[] = [];
+  private lorries: Lorry[] = [...SEED_LORRIES];
   private drivers: Driver[] = [];
   private shipments: Shipment[] = [];
   private routes: Route[] = [];
@@ -77,6 +77,11 @@ class FleetMindStore {
         localStorage.setItem('prod_v1_wipe_complete', 'true');
       }
 
+      if (!localStorage.getItem('prod_v2_lorry_sync')) {
+        localStorage.removeItem('fleetmind_lorries');
+        localStorage.setItem('prod_v2_lorry_sync', 'true');
+      }
+
       this.loadFromLocalStorage();
       
       // CROSS-TAB SYNCHRONIZATION: Listen for updates from other tabs (e.g. Customer creating shipment while Dispatcher tab is open)
@@ -100,7 +105,16 @@ class FleetMindStore {
       if (s) this.shipments = JSON.parse(s);
 
       const l = localStorage.getItem('fleetmind_lorries');
-      if (l) this.lorries = JSON.parse(l);
+      if (l) {
+        const parsed = JSON.parse(l);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.lorries = parsed;
+        } else {
+          this.lorries = [...SEED_LORRIES];
+        }
+      } else {
+        this.lorries = [...SEED_LORRIES];
+      }
 
       const d = localStorage.getItem('fleetmind_drivers');
       if (d) this.drivers = JSON.parse(d);

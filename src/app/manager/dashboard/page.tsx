@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
+import { initSupabaseStoreSync } from '../../../lib/db/supabase-sync';
 import {
   TrendingUp,
   Fuel,
@@ -59,6 +60,7 @@ export default function ManagerDashboardPage() {
     };
 
     updateData();
+    initSupabaseStoreSync(true);
     const unsub = fleetMindStore.subscribe(updateData);
     return unsub;
   }, []);

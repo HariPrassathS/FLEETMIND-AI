@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
+import { initSupabaseStoreSync } from '../../../lib/db/supabase-sync';
 import { Shipment, ShipmentCategory, ShipmentPriority, ShipmentStatus, Lorry, Driver } from '../../../lib/optimization/types';
 import {
   Package,
@@ -66,6 +67,7 @@ export default function ShipmentsPage() {
     setShipments(fleetMindStore.getShipments());
     setLorries(fleetMindStore.getLorries());
     setDrivers(fleetMindStore.getDrivers());
+    initSupabaseStoreSync(true);
     const unsub = fleetMindStore.subscribe(() => {
       setShipments(fleetMindStore.getShipments());
       setLorries(fleetMindStore.getLorries());

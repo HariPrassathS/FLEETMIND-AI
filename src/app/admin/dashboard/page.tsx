@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
+import { initSupabaseStoreSync } from '../../../lib/db/supabase-sync';
 
 const LiveFleetMap = dynamic(
   () => import('../../../components/map/live-fleet-map').then((m) => m.LiveFleetMap),
@@ -44,6 +45,7 @@ export default function AdminDashboardPage() {
   const [optRuns, setOptRuns] = useState(fleetMindStore.getOptimizationRuns());
 
   useEffect(() => {
+    initSupabaseStoreSync(true);
     const unsub = fleetMindStore.subscribe(() => {
       setUsers(fleetMindStore.getUsers());
       setLorries(fleetMindStore.getLorries());

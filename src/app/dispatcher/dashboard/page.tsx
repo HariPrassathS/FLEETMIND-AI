@@ -5,6 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
+import { initSupabaseStoreSync } from '../../../lib/db/supabase-sync';
 
 const LiveFleetMap = dynamic(
   () => import('../../../components/map/live-fleet-map').then((m) => m.LiveFleetMap),
@@ -41,6 +42,7 @@ export default function DispatcherDashboardPage() {
   const [optimizationRuns, setOptimizationRuns] = useState(fleetMindStore.getOptimizationRuns());
 
   useEffect(() => {
+    initSupabaseStoreSync(true);
     const unsub = fleetMindStore.subscribe(() => {
       setShipments(fleetMindStore.getShipments());
       setLorries(fleetMindStore.getLorries());

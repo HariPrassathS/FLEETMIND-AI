@@ -703,6 +703,61 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* SECTION 13.5: FREQUENTLY ASKED QUESTIONS */}
+      <section className="py-20 px-4 sm:px-8 max-w-5xl mx-auto space-y-10">
+        <div className="text-center max-w-2xl mx-auto space-y-3">
+          <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Answers & Insights</span>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-sm text-slate-600">
+            Everything you need to know about FleetMind AI load consolidation, routing algorithms, and enterprise telemetry.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-card hover:shadow-card-hover transition space-y-2">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-black text-xs shrink-0">1</span>
+              How does FleetMind AI differ from standard GPS trackers?
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed pl-8">
+              Legacy GPS trackers only answer <em>"Where is the truck?"</em>. FleetMind AI acts as an autonomous co-pilot that answers <em>"What is the most profitable load to assign, which carrier has the best mileage equation, and what sequence avoids deadheading?"</em>.
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-card hover:shadow-card-hover transition space-y-2">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-xs shrink-0">2</span>
+              What happens during highway breakdown disruptions?
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed pl-8">
+              Our Self-Healing Disruption Engine detects breakdown telemetry or driver SOS pings, identifies available carriers in the corridor, and generates a 1-click rescue plan with cross-docking waypoint recalculation.
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-card hover:shadow-card-hover transition space-y-2">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-black text-xs shrink-0">3</span>
+              Does the Driver Cockpit work without internet?
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed pl-8">
+              Yes. Built as an Offline-First Progressive Web App (PWA) with Service Workers and IndexedDB, drivers can record turn-by-turn deliveries, capture signatures, and sync when cell reception resumes.
+            </p>
+          </div>
+
+          <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-card hover:shadow-card-hover transition space-y-2">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-black text-xs shrink-0">4</span>
+              How does the 2-Opt TSP optimization save diesel?
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed pl-8">
+              By uncrossing inefficient route loops and factoring vehicle fuel efficiencies (e.g. 5 km/L vs 10.4 km/L), FleetMind delivers an average of 18.4% reduction in total diesel consumption across regional runs.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* SECTION 14: APPLY FOR DISPATCHER COMMAND DESK CARD */}
       <section className="py-16 px-4 sm:px-8 max-w-7xl mx-auto">
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 sm:p-12">

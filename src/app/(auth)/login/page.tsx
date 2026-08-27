@@ -126,84 +126,91 @@ function LoginContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-between relative overflow-hidden selection:bg-blue-100">
       {/* Background glow mesh */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-blue-100/50 via-indigo-50/20 to-transparent blur-3xl pointer-events-none -z-10 rounded-full" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-gradient-to-b from-blue-100/60 via-indigo-50/30 to-transparent blur-3xl pointer-events-none -z-10 rounded-full" />
+      <div className="absolute -bottom-32 right-0 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl pointer-events-none -z-10" />
 
-      {/* Back to Home button */}
-      <div className="sm:mx-auto sm:w-full sm:max-w-md px-4 mb-3 flex items-center justify-between">
+      {/* Top Header with Back Navigation */}
+      <header className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between z-10">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50/60 border border-slate-200/90 hover:border-blue-200 px-3.5 py-2 rounded-xl shadow-subtle hover:shadow-card transition group"
+          className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-blue-600 bg-white/95 backdrop-blur-md hover:bg-blue-50/80 border border-slate-200/90 hover:border-blue-300 px-3.5 py-2 rounded-xl shadow-subtle hover:shadow-card transition group"
         >
-          <ArrowLeft className="w-4 h-4 text-slate-400 group-hover:-translate-x-0.5 group-hover:text-blue-600 transition" />
-          <span>Back to FleetMind AI Home</span>
+          <ArrowLeft className="w-4 h-4 text-slate-400 group-hover:-translate-x-1 group-hover:text-blue-600 transition duration-200" />
+          <span>Back to Home</span>
         </Link>
-        <span className="text-[11px] font-semibold text-slate-400">Secure Access</span>
-      </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md px-4">
-        <div className="bg-white py-8 px-6 sm:px-8 rounded-3xl shadow-xl border border-slate-200/80">
-          {/* Brand Header */}
-          <div className="flex flex-col items-center mb-6">
-            <BrandLogo size="lg" variant="full" />
-            <p className="text-xs text-slate-500 font-semibold mt-1">Unified Logistics Intelligence Portal</p>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[11px] font-bold text-slate-600 hidden sm:inline">FleetMind Network Active</span>
+        </div>
+      </header>
 
-          {/* Tab Switcher */}
-          <div className="flex border-b border-slate-200 bg-slate-50 p-1.5 rounded-2xl mb-6">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('login');
-                setError(null);
-              }}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 ${
-                activeTab === 'login'
-                  ? 'bg-white text-blue-700 shadow-card font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('register');
-                setRegStep(1);
-                setError(null);
-              }}
-              className={`flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 ${
-                activeTab === 'register'
-                  ? 'bg-white text-blue-700 shadow-card font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              Create Customer
-            </button>
-          </div>
-
-          {authSuccess && (
-            <div className="mb-4 p-3.5 bg-emerald-50 border-2 border-emerald-300 rounded-2xl text-xs text-emerald-950 flex items-center gap-3 animate-in fade-in zoom-in-95 shadow-md">
-              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 animate-bounce">
-                ✓
-              </div>
-              <div className="flex-1">
-                <p className="font-extrabold text-emerald-950">Login Successful</p>
-                <p className="text-emerald-700 font-semibold text-[11px] mt-0.5">{authSuccess}</p>
-              </div>
-              <span className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin shrink-0" />
+      {/* Center Auth Card */}
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 my-2 sm:my-6 z-10">
+        <div className="w-full max-w-md">
+          <div className="bg-white/95 backdrop-blur-xl py-7 px-5 sm:px-8 rounded-3xl shadow-2xl border border-slate-200/80 transition-all">
+            {/* Brand Header */}
+            <div className="flex flex-col items-center mb-6 text-center">
+              <BrandLogo size="lg" variant="full" />
+              <p className="text-xs text-slate-500 font-semibold mt-1.5">Unified Logistics Decision Intelligence Portal</p>
             </div>
-          )}
 
-          {error && (
-            <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>{error}</span>
+            {/* Tab Switcher */}
+            <div className="flex border border-slate-200/80 bg-slate-100/80 p-1.5 rounded-2xl mb-6 shadow-inner">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('login');
+                  setError(null);
+                }}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 ${
+                  activeTab === 'login'
+                    ? 'bg-white text-blue-700 shadow-card font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('register');
+                  setRegStep(1);
+                  setError(null);
+                }}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 ${
+                  activeTab === 'register'
+                    ? 'bg-white text-blue-700 shadow-card font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                Create Shipper
+              </button>
             </div>
-          )}
+
+            {authSuccess && (
+              <div className="mb-4 p-3.5 bg-emerald-50 border-2 border-emerald-300 rounded-2xl text-xs text-emerald-950 flex items-center gap-3 animate-in fade-in zoom-in-95 shadow-md">
+                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0 animate-bounce">
+                  ✓
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-extrabold text-emerald-950">Login Successful</p>
+                  <p className="text-emerald-700 font-semibold text-[11px] mt-0.5 truncate">{authSuccess}</p>
+                </div>
+                <span className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin shrink-0" />
+              </div>
+            )}
+
+            {error && (
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span className="font-medium">{error}</span>
+              </div>
+            )}
 
           {/* TAB 1: SIGN IN */}
           {activeTab === 'login' && (
@@ -477,8 +484,16 @@ function LoginContent() {
               )}
             </form>
           )}
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="w-full py-4 text-center text-[11px] font-semibold text-slate-400 z-10 flex flex-wrap items-center justify-center gap-4">
+        <span>🔒 256-Bit SSL Encrypted Enterprise Auth</span>
+        <span>•</span>
+        <span>FleetMind AI Decision Platform</span>
+      </footer>
     </div>
   );
 }

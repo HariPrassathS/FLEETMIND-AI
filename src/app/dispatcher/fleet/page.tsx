@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { VehicleAvatar, VEHICLE_PRESET_IMAGES } from '../../../components/brand/vehicle-avatar';
+import { TruckCapacityVisual } from '../../../components/brand/truck-capacity-visual';
 
 export default function DispatcherFleetPage() {
   const [lorries, setLorries] = useState<Lorry[]>(fleetMindStore.getLorries());
@@ -278,21 +279,16 @@ export default function DispatcherFleetPage() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl">
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Payload Cap</span>
-                    <p className="font-black text-slate-900">{lorry.max_weight_kg.toLocaleString()} kg</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Volume Cap</span>
-                    <p className="font-black text-slate-900">{lorry.max_volume_m3} m³</p>
-                  </div>
+                {/* Realtime Side-View Truck Capacity Visual */}
+                <TruckCapacityVisual lorry={lorry} mode="detailed" showMetrics={true} />
+
+                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl">
                   <div>
                     <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Fuel Efficiency</span>
                     <p className="font-black text-blue-600">{lorry.fuel_efficiency_km_per_l} km/L</p>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Assigned Driver</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Assigned Pilot</span>
                     <p className="font-bold text-slate-900 truncate">{lorry.assigned_driver_name || 'Reserve Pool'}</p>
                   </div>
                 </div>

@@ -16,6 +16,7 @@ import { useAuth } from '../../../../lib/auth/auth-context';
 import { fleetMindStore } from '../../../../lib/db/store';
 import { Shipment, Lorry, Driver } from '../../../../lib/optimization/types';
 import { resolveCityCoordinates } from '../../../../lib/routing/city-coordinates';
+import { TruckCapacityVisual } from '../../../../components/brand/truck-capacity-visual';
 import {
   Package,
   Truck,
@@ -522,6 +523,9 @@ export default function CustomerTrackingPage() {
             </div>
           ) : (
             <>
+              {/* Customer Truck Visual */}
+              {lorry && <TruckCapacityVisual lorry={lorry} mode="customer" />}
+
               <div className="grid grid-cols-2 gap-3 text-xs pt-1">
                 {/* Lorry Info */}
                 <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-1">

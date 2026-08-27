@@ -32,6 +32,8 @@ import {
   PlusCircle,
 } from 'lucide-react';
 import { DriverGpsTracker } from '../../../components/driver/driver-gps-tracker';
+import { TruckCapacityVisual } from '../../../components/brand/truck-capacity-visual';
+import { getLorryLiveCapacity } from '../../../lib/optimization/capacity';
 
 export default function DriverDashboardPage() {
   const { user } = useAuth();
@@ -588,6 +590,92 @@ export default function DriverDashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* MY VEHICLE & REALTIME CAPACITY VISUALIZER */}
+      {assignedLorry && (() => {
+        const driverLorryCap = getLorryLiveCapacity(assignedLorry);
+        return (
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                  <Truck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                    My Vehicle & Live Capacity
+                  </h4>
+                  <span className="text-[10px] text-slate-500 font-bold">
+                    {assignedLorry.lorry_code} • {assignedLorry.model} ({assignedLorry.registration_number})
+                  </span>
+                </div>
+              </div>
+
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-50 text-blue-800 border border-blue-200 font-mono">
+                {assignedLorry.fuel_efficiency_km_per_l} km/L
+              </span>
+            </div>
+
+            {/* Dynamic Realistic Truck SVG Visual */}
+            <TruckCapacityVisual
+              lorry={assignedLorry}
+              capacity={driverLorryCap}
+              mode="detailed"
+              showMetrics={true}
+            />
+
+            {/* Active Consignments Manifest on this Truck */}
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                <span className="flex items-center gap-1">
+                  <Package className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Onboard & Assigned Consignments ({driverLorryCap.assignedShipments.length})</span>
+                </span>
+                <span className="font-mono text-purple-900 font-black">
+                  {driverLorryCap.volumeOccupancyPct}% Volume
+                </span>
+              </div>
+
+              {driverLorryCap.assignedShipments.length > 0 ? (
+                <div className="space-y-1.5 pt-1">
+                  {driverLorryCap.assignedShipments.map((s) => (
+                    <div
+                      key={s.id}
+                      className="p-2 bg-white rounded-xl border border-slate-200/80 flex items-center justify-between text-[11px]"
+                    >
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-black text-slate-900 font-mono">{s.shipment_code}</span>
+                          <span className={`px-1.5 py-0.2 rounded text-[8px] font-black uppercase ${
+                            s.status === 'DELIVERED'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : s.status === 'IN_TRANSIT' || s.status === 'PICKED_UP'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {s.status}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 block truncate max-w-[180px]">
+                          {s.pickup_city} ➔ {s.destination_city}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-black text-slate-800">{s.weight_kg.toLocaleString()} kg</span>
+                        <span className="text-purple-700 text-[10px] block font-bold">{s.volume_m3} m³</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-500 py-1 italic">
+                  No active cargo assigned. Vehicle empty (0% Load).
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* SECURE DELIVERY VERIFICATION & OTP MODAL */}
       {isVerificationModalOpen && (

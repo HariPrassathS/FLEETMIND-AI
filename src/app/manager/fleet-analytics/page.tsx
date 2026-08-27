@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
 import { Truck, Gauge, Fuel, CheckCircle2, Inbox } from 'lucide-react';
+import { TruckCapacityVisual } from '../../../components/brand/truck-capacity-visual';
 
 export default function FleetAnalyticsPage() {
   const [lorries, setLorries] = useState(fleetMindStore.getLorries());
@@ -57,30 +58,27 @@ export default function FleetAnalyticsPage() {
           </h3>
 
           {lorries.length > 0 ? (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {lorries.map((l) => (
-                <div key={l.id} className="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 flex items-center justify-between text-xs hover:bg-slate-100/70 transition">
-                  <div>
-                    <span className="font-bold text-slate-900">{l.lorry_code} ({l.model})</span>
-                    <p className="text-[11px] text-slate-500">{l.registration_number} • Depot: {l.current_address}</p>
+                <div key={l.id} className="p-4 rounded-3xl border border-slate-200 bg-white shadow-card space-y-3 hover:shadow-card-hover transition">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-black text-slate-900 text-sm block">{l.lorry_code} ({l.model})</span>
+                      <p className="text-[11px] text-slate-500 font-mono">{l.registration_number}</p>
+                    </div>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                      l.status === 'ON_ROUTE' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {l.status}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-6 text-right">
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Capacity</span>
-                      <strong className="text-slate-800">{l.max_weight_kg.toLocaleString()} kg</strong>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Fuel Economy</span>
-                      <strong className="text-blue-700">{l.fuel_efficiency_km_per_l} km/L</strong>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Status</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        l.status === 'ON_ROUTE' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-50 text-blue-700'
-                      }`}>
-                        {l.status}
-                      </span>
-                    </div>
+
+                  {/* Dynamic Realistic Truck SVG Visual */}
+                  <TruckCapacityVisual lorry={l} mode="detailed" showMetrics={true} />
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600 font-bold">
+                    <span>Efficiency: <strong className="text-blue-600">{l.fuel_efficiency_km_per_l} km/L</strong></span>
+                    <span className="truncate max-w-[140px] text-slate-400 font-medium">Depot: {l.current_address || 'Chennai Hub'}</span>
                   </div>
                 </div>
               ))}

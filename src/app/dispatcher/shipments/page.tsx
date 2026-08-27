@@ -7,6 +7,8 @@ import { fleetMindStore } from '../../../lib/db/store';
 import { initSupabaseStoreSync } from '../../../lib/db/supabase-sync';
 import { Shipment, ShipmentCategory, ShipmentPriority, ShipmentStatus, Lorry, Driver, ConsolidationOption } from '../../../lib/optimization/types';
 import { SmartConsolidationCard } from '../../../components/dispatcher/smart-consolidation-card';
+import { TruckCapacityVisual } from '../../../components/brand/truck-capacity-visual';
+import { getLorryLiveCapacity } from '../../../lib/optimization/capacity';
 import {
   Package,
   Plus,
@@ -1009,92 +1011,129 @@ export default function ShipmentsPage() {
         )}
 
         {/* View Truck Quick Inspect Modal */}
-        {viewTruckDetails && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in my-auto">
-              <div className="p-6 bg-slate-900 text-white flex items-start justify-between relative overflow-hidden">
-                <div className="flex items-center gap-3 z-10">
-                  <VehicleAvatar
-                    src={viewTruckDetails.image_url}
-                    lorryCode={viewTruckDetails.lorry_code}
-                    model={viewTruckDetails.model}
-                    isRefrigerated={viewTruckDetails.is_refrigerated}
-                    size="lg"
+        {viewTruckDetails && (() => {
+          const truckCap = getLorryLiveCapacity(viewTruckDetails);
+          return (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden animate-in fade-in my-auto">
+                <div className="p-6 bg-slate-900 text-white flex items-start justify-between relative overflow-hidden">
+                  <div className="flex items-center gap-3 z-10">
+                    <VehicleAvatar
+                      src={viewTruckDetails.image_url}
+                      lorryCode={viewTruckDetails.lorry_code}
+                      model={viewTruckDetails.model}
+                      isRefrigerated={viewTruckDetails.is_refrigerated}
+                      size="lg"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-mono text-[10px] font-black border border-blue-400/30 uppercase">
+                          {viewTruckDetails.lorry_code}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                          viewTruckDetails.status === 'AVAILABLE'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                        }`}>
+                          {viewTruckDetails.status}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-black text-white mt-1">{viewTruckDetails.model}</h3>
+                      <span className="text-xs text-slate-400 font-mono">{viewTruckDetails.registration_number}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setViewTruckDetails(null)}
+                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition z-10"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4 text-xs">
+                  {/* Dynamic Realistic Truck Capacity Visual */}
+                  <TruckCapacityVisual
+                    lorry={viewTruckDetails}
+                    capacity={truckCap}
+                    mode="detailed"
+                    showMetrics={true}
                   />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-mono text-[10px] font-black border border-blue-400/30 uppercase">
-                        {viewTruckDetails.lorry_code}
+
+                  {/* Assigned Consignments Breakdown */}
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1">
+                        <Package className="w-3.5 h-3.5 text-purple-600" /> Assigned Consignments ({truckCap.assignedShipments.length})
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                        viewTruckDetails.status === 'AVAILABLE'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                      }`}>
-                        {viewTruckDetails.status}
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {truckCap.volumeOccupancyPct}% Volume Occupied
                       </span>
                     </div>
-                    <h3 className="text-base font-black text-white mt-1">{viewTruckDetails.model}</h3>
-                    <span className="text-xs text-slate-400 font-mono">{viewTruckDetails.registration_number}</span>
+
+                    {truckCap.assignedShipments.length > 0 ? (
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pt-1">
+                        {truckCap.assignedShipments.map((s) => (
+                          <div
+                            key={s.id}
+                            className="p-2 bg-white rounded-xl border border-slate-200/80 flex items-center justify-between text-[11px]"
+                          >
+                            <div>
+                              <span className="font-black text-slate-900 font-mono">{s.shipment_code}</span>
+                              <span className="text-slate-500 text-[10px] block truncate">
+                                {s.pickup_city} ➔ {s.destination_city}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-black text-slate-800">{s.weight_kg.toLocaleString()} kg</span>
+                              <span className="text-purple-700 text-[10px] block font-bold">{s.volume_m3} m³</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-500 py-1 italic">
+                        No active consignments currently assigned to this vehicle (0% Load).
+                      </p>
+                    )}
                   </div>
+
+                  {/* Vehicle Technical & Mileage Specs */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase block">Fuel Mileage</span>
+                      <strong className="text-sm font-black text-blue-600">{viewTruckDetails.fuel_efficiency_km_per_l} km / L</strong>
+                      <span className="text-[10px] text-slate-500 block">Commercial Diesel</span>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase block">Refrigeration</span>
+                      <strong className="text-sm font-black text-slate-900">
+                        {viewTruckDetails.is_refrigerated ? 'Reefer Cold-Chain' : 'Ambient Dry Cargo'}
+                      </strong>
+                      <span className="text-[10px] text-slate-500 block">Temperature spec</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200 space-y-1">
+                    <span className="text-[10px] text-blue-700 font-bold uppercase tracking-wider block">Live Hardware GPS Terminal</span>
+                    <p className="text-slate-900 font-bold text-xs">{viewTruckDetails.current_address || 'Designated Regional Hub Depot'}</p>
+                    <span className="text-[10px] text-slate-500 font-mono block">
+                      Lat: {viewTruckDetails.current_lat.toFixed(4)}, Lng: {viewTruckDetails.current_lng.toFixed(4)}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setViewTruckDetails(null)}
+                    className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-card transition"
+                  >
+                    Close Truck Inspector
+                  </button>
                 </div>
-
-                <button
-                  onClick={() => setViewTruckDetails(null)}
-                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition z-10"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="p-6 space-y-4 text-xs">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Max Payload</span>
-                    <strong className="text-base font-black text-slate-900">{viewTruckDetails.max_weight_kg.toLocaleString()} kg</strong>
-                    <span className="text-[10px] text-slate-500 block">Gross capacity</span>
-                  </div>
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Container Bay</span>
-                    <strong className="text-base font-black text-slate-900">{viewTruckDetails.max_volume_m3} m³</strong>
-                    <span className="text-[10px] text-slate-500 block">Enclosed volume</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Fuel Mileage</span>
-                    <strong className="text-sm font-black text-blue-600">{viewTruckDetails.fuel_efficiency_km_per_l} km / Liter</strong>
-                    <span className="text-[10px] text-slate-500 block">Commercial Diesel</span>
-                  </div>
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Refrigeration</span>
-                    <strong className="text-sm font-black text-slate-900">
-                      {viewTruckDetails.is_refrigerated ? 'Reefer Cold-Chain' : 'Ambient Dry Cargo'}
-                    </strong>
-                    <span className="text-[10px] text-slate-500 block">Temperature spec</span>
-                  </div>
-                </div>
-
-                <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-200 space-y-1">
-                  <span className="text-[10px] text-blue-700 font-bold uppercase tracking-wider block">Live Hardware GPS Terminal</span>
-                  <p className="text-slate-900 font-bold text-xs">{viewTruckDetails.current_address || 'Designated Regional Hub Depot'}</p>
-                  <span className="text-[10px] text-slate-500 font-mono block">
-                    Lat: {viewTruckDetails.current_lat.toFixed(4)}, Lng: {viewTruckDetails.current_lng.toFixed(4)}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setViewTruckDetails(null)}
-                  className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-card transition"
-                >
-                  Close Truck Inspector
-                </button>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </main>
     </>
   );

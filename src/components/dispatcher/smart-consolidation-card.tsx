@@ -26,6 +26,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { VehicleAvatar } from '../brand/vehicle-avatar';
+import { TruckCapacityVisual } from '../brand/truck-capacity-visual';
 
 interface SmartConsolidationCardProps {
   analysis: ConsolidationAnalysisResult;
@@ -183,6 +184,18 @@ export function SmartConsolidationCard({
                     </span>
                   </div>
 
+                  {/* Compact Side-View Truck Visual */}
+                  <div className="w-full max-w-[200px] mx-auto opacity-95">
+                    <TruckCapacityVisual
+                      lorry={opt.lorry}
+                      newShipment={{
+                        weight_kg: analysis.shipment.weight_kg,
+                        volume_m3: analysis.shipment.volume_m3,
+                      }}
+                      showMetrics={false}
+                    />
+                  </div>
+
                   <div className="text-[11px] text-slate-600 font-medium truncate">
                     {opt.existing_corridor}
                   </div>
@@ -239,105 +252,17 @@ export function SmartConsolidationCard({
           </div>
         </div>
 
-        {/* 4. Segmented Visual Truck Load Gauges (Before vs After) */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-              <Scale className="w-4 h-4 text-blue-600" /> Projected Vehicle Payload & Volume
-            </span>
-            <span className="text-xs font-bold text-slate-500">
-              Max Payload: {selectedOption.max_weight_kg.toLocaleString()} kg / {selectedOption.max_volume_m3} m³
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Weight Breakdown */}
-            <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-2.5">
-              <div className="flex justify-between items-center text-xs font-bold">
-                <span className="text-slate-600">Payload Weight</span>
-                <span className="font-mono text-slate-900">
-                  <strong>{selectedOption.projected_weight_kg.toLocaleString()}</strong> / {selectedOption.max_weight_kg.toLocaleString()} kg (
-                  <strong className={selectedOption.projected_weight_util_pct > 90 ? 'text-amber-600' : 'text-emerald-700'}>
-                    {selectedOption.projected_weight_util_pct}%
-                  </strong>)
-                </span>
-              </div>
-
-              {/* Multi-segmented Progress Bar */}
-              <div className="w-full h-3 rounded-full bg-slate-200 overflow-hidden flex p-0.5">
-                {selectedOption.current_weight_util_pct > 0 && (
-                  <div
-                    className="h-full bg-blue-600 rounded-l-full"
-                    style={{ width: `${selectedOption.current_weight_util_pct}%` }}
-                    title={`Current Load: ${selectedOption.current_weight_kg} kg`}
-                  />
-                )}
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500"
-                  style={{
-                    width: `${Math.max(
-                      4,
-                      selectedOption.projected_weight_util_pct - selectedOption.current_weight_util_pct
-                    )}%`,
-                  }}
-                  title={`New Shipment: ${selectedOption.new_shipment_weight_kg} kg`}
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold pt-1">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-blue-600 inline-block" /> Current Cargo ({selectedOption.current_weight_kg} kg)
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Proposed (+{selectedOption.new_shipment_weight_kg} kg)
-                </span>
-                <span className="text-slate-400">Free: {selectedOption.remaining_weight_kg} kg</span>
-              </div>
-            </div>
-
-            {/* Volume Breakdown */}
-            <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-2.5">
-              <div className="flex justify-between items-center text-xs font-bold">
-                <span className="text-slate-600">Cargo Hold Volume</span>
-                <span className="font-mono text-slate-900">
-                  <strong>{selectedOption.projected_volume_m3}</strong> / {selectedOption.max_volume_m3} m³ (
-                  <strong className={selectedOption.projected_volume_util_pct > 90 ? 'text-purple-600' : 'text-teal-700'}>
-                    {selectedOption.projected_volume_util_pct}%
-                  </strong>)
-                </span>
-              </div>
-
-              <div className="w-full h-3 rounded-full bg-slate-200 overflow-hidden flex p-0.5">
-                {selectedOption.current_volume_util_pct > 0 && (
-                  <div
-                    className="h-full bg-purple-600 rounded-l-full"
-                    style={{ width: `${selectedOption.current_volume_util_pct}%` }}
-                    title={`Current Volume: ${selectedOption.current_volume_m3} m³`}
-                  />
-                )}
-                <div
-                  className="h-full bg-gradient-to-r from-teal-500 to-cyan-500"
-                  style={{
-                    width: `${Math.max(
-                      4,
-                      selectedOption.projected_volume_util_pct - selectedOption.current_volume_util_pct
-                    )}%`,
-                  }}
-                  title={`New Volume: ${selectedOption.new_shipment_volume_m3} m³`}
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold pt-1">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-purple-600 inline-block" /> Current ({selectedOption.current_volume_m3} m³)
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" /> Proposed (+{selectedOption.new_shipment_volume_m3} m³)
-                </span>
-                <span className="text-slate-400">Free: {selectedOption.remaining_volume_m3} m³</span>
-              </div>
-            </div>
-          </div>
+        {/* 4. Realistic Side-View Truck Capacity Visualizer with Projected Consignment Fill */}
+        <div className="space-y-2">
+          <TruckCapacityVisual
+            lorry={selectedOption.lorry}
+            newShipment={{
+              weight_kg: analysis.shipment.weight_kg,
+              volume_m3: analysis.shipment.volume_m3,
+            }}
+            mode="detailed"
+            isSelected={true}
+          />
         </div>
 
         {/* 5. Metrics & Detour Comparison Grid */}

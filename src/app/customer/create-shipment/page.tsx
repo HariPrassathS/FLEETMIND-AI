@@ -87,27 +87,60 @@ export default function CreateShipmentPage() {
   const [geoLocating, setGeoLocating] = useState(false);
 
   // Handle Geolocation
-  const handleUseCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.');
-      return;
-    }
+  const handleUseCurrentLocation = async () => {
     setGeoLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setForm((prev) => ({
-          ...prev,
-          pickupLat: pos.coords.latitude,
-          pickupLng: pos.coords.longitude,
-          senderAddressLine2: `GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`,
-        }));
-        setGeoLocating(false);
-      },
-      (err) => {
-        console.warn('Geolocation error:', err.message);
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setForm((prev) => ({
+            ...prev,
+            pickupLat: pos.coords.latitude,
+            pickupLng: pos.coords.longitude,
+            senderAddressLine2: `GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`,
+          }));
+          setGeoLocating(false);
+        },
+        async () => {
+          // Fallback to Geoapify IP Info
+          try {
+            const res = await fetch('/api/geo/ipinfo');
+            const data = await res.json();
+            if (data.city) {
+              setForm((prev) => ({
+                ...prev,
+                senderCity: data.city,
+                senderState: data.state || prev.senderState,
+                pickupLat: data.lat,
+                pickupLng: data.lng,
+              }));
+            }
+          } catch (e) {
+            console.warn('IP Info fallback failed:', e);
+          } finally {
+            setGeoLocating(false);
+          }
+        }
+      );
+    } else {
+      try {
+        const res = await fetch('/api/geo/ipinfo');
+        const data = await res.json();
+        if (data.city) {
+          setForm((prev) => ({
+            ...prev,
+            senderCity: data.city,
+            senderState: data.state || prev.senderState,
+            pickupLat: data.lat,
+            pickupLng: data.lng,
+          }));
+        }
+      } catch (e) {
+        console.warn('IP Info fallback failed:', e);
+      } finally {
         setGeoLocating(false);
       }
-    );
+    }
   };
 
   // AI Parser

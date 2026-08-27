@@ -148,3 +148,93 @@ export async function fetchGeoapifyRouteMatrix(
     return null;
   }
 }
+
+export interface RoutePlannerAgent {
+  start_location: [number, number]; // [lng, lat]
+  end_location?: [number, number];   // [lng, lat]
+  pickup_capacity?: number;
+}
+
+export interface RoutePlannerJob {
+  location: [number, number];        // [lng, lat]
+  duration?: number;                 // duration in seconds (e.g. 300)
+  pickup_amount?: number;
+}
+
+/**
+ * Solves Vehicle Routing Problem (VRP) using Geoapify Route Planner API.
+ */
+export async function fetchGeoapifyRoutePlanner(
+  agents: RoutePlannerAgent[],
+  jobs: RoutePlannerJob[]
+): Promise<any | null> {
+  try {
+    const url = `https://api.geoapify.com/v1/routeplanner?apiKey=${GEOAPIFY_API_KEY}`;
+    const body = {
+      mode: 'drive',
+      agents,
+      jobs,
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'FleetMind-AI/1.0',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.warn('[Geoapify] Route Planner optimization failed:', err);
+    return null;
+  }
+}
+
+export interface IPInfoResult {
+  ip: string;
+  city: string;
+  state: string;
+  country: string;
+  lat: number;
+  lng: number;
+  postalCode?: string;
+  currency?: string;
+}
+
+/**
+ * Automatically detects caller or specified IP geolocation using Geoapify IP Info API.
+ */
+export async function fetchGeoapifyIPInfo(ip?: string): Promise<IPInfoResult | null> {
+  try {
+    const ipParam = ip ? `&ip=${encodeURIComponent(ip)}` : '';
+    const url = `https://api.geoapify.com/v1/ipinfo?apiKey=${GEOAPIFY_API_KEY}${ipParam}`;
+
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'FleetMind-AI/1.0' },
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    return {
+      ip: data.ip,
+      city: data.city?.name || 'Chennai',
+      state: data.state?.name || 'Tamil Nadu',
+      country: data.country?.name || 'India',
+      lat: data.location?.latitude || 13.0827,
+      lng: data.location?.longitude || 80.2707,
+      postalCode: data.postal?.code,
+      currency: data.country?.currency,
+    };
+  } catch (err) {
+    console.warn('[Geoapify] IP Info lookup failed:', err);
+    return null;
+  }
+}

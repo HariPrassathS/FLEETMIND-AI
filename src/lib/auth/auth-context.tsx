@@ -70,7 +70,7 @@ export function getRoleDashboardPath(role?: UserRole | null): string {
   }
 }
 
-export const SYSTEM_ADMIN_UIDS = ['Mv2VcEbnG9dtzFxxS6twdO2DKGG3'];
+export const SYSTEM_ADMIN_UIDS = ['ZPMwgp2Z93dSBX1JPuCyD42WODY2', 'Mv2VcEbnG9dtzFxxS6twdO2DKGG3'];
 export const SYSTEM_MANAGER_UIDS = ['xCQEV4tTJUMaavZaK2qxxMUCJ922'];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

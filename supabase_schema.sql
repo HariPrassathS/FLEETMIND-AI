@@ -523,13 +523,16 @@ ALTER TABLE maintenance_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
+DROP POLICY IF EXISTS "Public profiles are viewable by authenticated users" ON profiles;
 CREATE POLICY "Public profiles are viewable by authenticated users" ON profiles
     FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
 CREATE POLICY "Users can update own profile" ON profiles
     FOR UPDATE TO authenticated USING (auth.uid()::text = firebase_uid);
 
 -- Shipments policies
+DROP POLICY IF EXISTS "Customer can view own shipments" ON shipments;
 CREATE POLICY "Customer can view own shipments" ON shipments
     FOR SELECT TO authenticated
     USING (
@@ -537,6 +540,7 @@ CREATE POLICY "Customer can view own shipments" ON shipments
         OR EXISTS (SELECT 1 FROM profiles WHERE firebase_uid = auth.uid()::text AND role IN ('DISPATCHER', 'MANAGER', 'ADMIN'))
     );
 
+DROP POLICY IF EXISTS "Customer can insert shipments" ON shipments;
 CREATE POLICY "Customer can insert shipments" ON shipments
     FOR INSERT TO authenticated
     WITH CHECK (
@@ -544,11 +548,13 @@ CREATE POLICY "Customer can insert shipments" ON shipments
         OR EXISTS (SELECT 1 FROM profiles WHERE firebase_uid = auth.uid()::text AND role IN ('DISPATCHER', 'ADMIN'))
     );
 
+DROP POLICY IF EXISTS "Dispatchers and Admins can update shipments" ON shipments;
 CREATE POLICY "Dispatchers and Admins can update shipments" ON shipments
     FOR UPDATE TO authenticated
     USING (EXISTS (SELECT 1 FROM profiles WHERE firebase_uid = auth.uid()::text AND role IN ('DISPATCHER', 'DRIVER', 'ADMIN')));
 
 -- GPS Telemetry policies
+DROP POLICY IF EXISTS "Drivers can insert GPS location" ON gps_locations;
 CREATE POLICY "Drivers can insert GPS location" ON gps_locations
     FOR INSERT TO authenticated
     WITH CHECK (
@@ -556,13 +562,16 @@ CREATE POLICY "Drivers can insert GPS location" ON gps_locations
         OR EXISTS (SELECT 1 FROM profiles WHERE firebase_uid = auth.uid()::text AND role IN ('DRIVER', 'DISPATCHER', 'ADMIN'))
     );
 
+DROP POLICY IF EXISTS "GPS locations are viewable by operational staff" ON gps_locations;
 CREATE POLICY "GPS locations are viewable by operational staff" ON gps_locations
     FOR SELECT TO authenticated USING (true);
 
 -- Vehicles & Drivers policies
+DROP POLICY IF EXISTS "Vehicles viewable by authenticated users" ON vehicles;
 CREATE POLICY "Vehicles viewable by authenticated users" ON vehicles
     FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Drivers viewable by authenticated users" ON drivers;
 CREATE POLICY "Drivers viewable by authenticated users" ON drivers
     FOR SELECT TO authenticated USING (true);
 
@@ -578,14 +587,17 @@ VALUES
     ('expense-receipts', 'expense-receipts', false)
 ON CONFLICT (id) DO NOTHING;
 
+DROP POLICY IF EXISTS "Public vehicle images" ON storage.objects;
 CREATE POLICY "Public vehicle images" ON storage.objects
     FOR SELECT TO public
     USING (bucket_id = 'vehicle-images');
 
+DROP POLICY IF EXISTS "Authenticated users can upload delivery proofs" ON storage.objects;
 CREATE POLICY "Authenticated users can upload delivery proofs" ON storage.objects
     FOR INSERT TO authenticated
     WITH CHECK (bucket_id = 'delivery-proofs');
 
+DROP POLICY IF EXISTS "Operational staff can read delivery proofs" ON storage.objects;
 CREATE POLICY "Operational staff can read delivery proofs" ON storage.objects
     FOR SELECT TO authenticated
     USING (bucket_id = 'delivery-proofs');
@@ -593,17 +605,20 @@ CREATE POLICY "Operational staff can read delivery proofs" ON storage.objects
 -- ============================================================================
 -- SECTION 8: SUPABASE REALTIME REPLICATION SETUP
 -- ============================================================================
-ALTER PUBLICATION supabase_realtime ADD TABLE gps_locations;
-ALTER PUBLICATION supabase_realtime ADD TABLE shipments;
-ALTER PUBLICATION supabase_realtime ADD TABLE trips;
-ALTER PUBLICATION supabase_realtime ADD TABLE vehicles;
-ALTER PUBLICATION supabase_realtime ADD TABLE drivers;
-ALTER PUBLICATION supabase_realtime ADD TABLE breakdowns;
-ALTER PUBLICATION supabase_realtime ADD TABLE cargo_transfers;
-ALTER PUBLICATION supabase_realtime ADD TABLE maintenance_records;
+DO $$
+BEGIN
+    BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE gps_locations; EXCEPTION WHEN duplicate_object THEN NULL; END;
+    BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE shipments; EXCEPTION WHEN duplicate_object THEN NULL; END;
+    BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE trips; EXCEPTION WHEN duplicate_object THEN NULL; END;
+    BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE vehicles; EXCEPTION WHEN duplicate_object THEN NULL; END;
+    BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE drivers; EXCEPTION WHEN duplicate_object THEN NULL; END;
+    BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE breakdowns; EXCEPTION WHEN duplicate_object THEN NULL; END;
+    BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE cargo_transfers; EXCEPTION WHEN duplicate_object THEN NULL; END;
+    BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE maintenance_records; EXCEPTION WHEN duplicate_object THEN NULL; END;
+END $$;
 
 -- ============================================================================
--- SECTION 9: SEED TEST DATA
+-- SECTION 9: INITIAL PRODUCTION CONFIGURATION
 -- ============================================================================
 
 -- Default system settings
@@ -624,44 +639,6 @@ INSERT INTO system_settings (
     1.50,
     48
 ) ON CONFLICT DO NOTHING;
-
--- Commercial lorries
-INSERT INTO vehicles (
-    lorry_code,
-    registration_number,
-    model,
-    image_url,
-    max_weight_kg,
-    max_volume_m3,
-    fuel_efficiency_km_per_l,
-    current_lat,
-    current_lng,
-    current_address,
-    status
-) VALUES 
-    ('L-11', 'TN-01-AB-4501', 'Tata 1109 LPT (6 Ton)', 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=600', 6000, 22.0, 5.0, 13.0450, 80.2010, 'Guindy Industrial Estate, Chennai', 'AVAILABLE'),
-    ('L-18', 'TN-02-CD-8818', 'Eicher Pro 2059 (Eco-Max 6 Ton)', 'https://images.unsplash.com/photo-1592838064575-70ed626d3a0e?w=600', 6200, 24.0, 10.4, 13.0850, 80.1250, 'Ambattur Industrial Estate, Chennai', 'AVAILABLE'),
-    ('L-07', 'TN-09-EF-1907', 'BharatBenz 1217R (8 Ton)', 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?w=600', 8500, 32.0, 6.2, 12.9810, 80.1800, 'Pallavaram Transport Hub, Chennai', 'AVAILABLE'),
-    ('L-04', 'KA-01-GH-3304', 'Tata Ace Gold (1.2 Ton)', 'https://images.unsplash.com/photo-1586191582056-a67b5e40a029?w=600', 1200, 5.5, 14.5, 12.9350, 77.6240, 'Koramangala Logistics Hub, Bengaluru', 'AVAILABLE')
-ON CONFLICT (lorry_code) DO NOTHING;
-
--- Commercial drivers
-INSERT INTO drivers (
-    name,
-    phone,
-    license_number,
-    current_lat,
-    current_lng,
-    availability_status,
-    shift_start,
-    shift_end,
-    performance_score
-) VALUES 
-    ('Murugan Selvam', '+91 98401 22334', 'TN01-2012004921', 13.0450, 80.2010, 'AVAILABLE', '06:00', '18:00', 98),
-    ('Rajesh Kumar', '+91 98402 33445', 'TN02-2015008819', 13.0850, 80.1250, 'AVAILABLE', '06:00', '18:00', 96),
-    ('Karthik Raja', '+91 98403 44556', 'TN09-2016009912', 12.9810, 80.1800, 'AVAILABLE', '07:00', '19:00', 94),
-    ('Suresh Gowda', '+91 98801 55667', 'KA01-2018003304', 12.9350, 77.6240, 'AVAILABLE', '06:00', '18:00', 97)
-ON CONFLICT (license_number) DO NOTHING;
 
 -- Canonical System Administrator Profile
 INSERT INTO profiles (
@@ -698,5 +675,6 @@ INSERT INTO profiles (
     true
 ) ON CONFLICT (firebase_uid) DO UPDATE 
 SET role = 'MANAGER', is_active = true, is_verified = true;
+
 
 

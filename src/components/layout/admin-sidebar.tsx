@@ -66,15 +66,13 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             badge="ADMIN"
             badgeColor="purple"
           />
-          {onClose && (
-            <button
-              onClick={handleClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 md:hidden transition"
-              aria-label="Close menu"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
+          <button
+            onClick={handleClose}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 md:hidden transition"
+            aria-label="Close menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         <nav className="p-3 space-y-1">

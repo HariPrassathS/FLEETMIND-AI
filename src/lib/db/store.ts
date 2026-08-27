@@ -22,6 +22,14 @@ import {
 } from '../optimization/types';
 import { AuditLog, DeliveryEvent, HealthCheckStatus, SystemAlert, UserProfile } from '../../types/database';
 import { SEED_DRIVERS, SEED_LORRIES, SEED_SHIPMENTS, SEED_SYSTEM_SETTINGS } from './seed-data';
+import {
+  syncShipmentToSupabase,
+  syncVehicleToSupabase,
+  syncDriverToSupabase,
+  syncProfileToSupabase,
+  syncGpsTelemetryToSupabase,
+  initSupabaseStoreSync,
+} from './supabase-sync';
 
 // Clean Production Seed Constants
 export const SEED_USERS: UserProfile[] = [];
@@ -58,6 +66,11 @@ class FleetMindStore {
 
   constructor() {
     // Clean initial state for live operations
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        initSupabaseStoreSync();
+      }, 50);
+    }
   }
 
   public resetDemoData() {
@@ -693,6 +706,7 @@ class FleetMindStore {
     this.users.push(newUser);
     this.logAudit(newUser.email, newUser.role, 'USER_CREATED', 'USER', newUser.id, null, newUser);
     this.notify('USER_CREATED', newUser);
+    syncProfileToSupabase(newUser);
     return newUser;
   }
 
@@ -704,6 +718,7 @@ class FleetMindStore {
     user.updated_at = new Date().toISOString();
     this.logAudit(adminEmail, 'ADMIN', 'USER_STATUS_UPDATED', 'USER', user.id, before, user);
     this.notify('USER_UPDATED', user);
+    syncProfileToSupabase(user);
     return user;
   }
 
@@ -715,6 +730,7 @@ class FleetMindStore {
     user.updated_at = new Date().toISOString();
     this.logAudit(adminEmail, 'ADMIN', 'USER_ROLE_CHANGED', 'USER', user.id, before, user);
     this.notify('USER_UPDATED', user);
+    syncProfileToSupabase(user);
     return user;
   }
 
@@ -725,6 +741,7 @@ class FleetMindStore {
       if (data.phone) user.phone = data.phone;
       user.updated_at = new Date().toISOString();
       this.notify('USER_UPDATED', user);
+      syncProfileToSupabase(user);
       return user;
     }
     return null;
@@ -742,7 +759,7 @@ class FleetMindStore {
   public createShipment(shipment: Partial<Shipment> & { description: string; weight_kg: number }): Shipment {
     const count = this.shipments.length + 1;
     const newShipment: Shipment = {
-      id: `shipment-${Date.now()}`,
+      id: shipment.id || `shipment-${Date.now()}`,
       shipment_code: shipment.shipment_code || `S-${1000 + count}`,
       customer_id: shipment.customer_id || 'cust-direct',
       customer_name: shipment.customer_name || 'Commercial Freight Client',
@@ -794,6 +811,7 @@ class FleetMindStore {
     this.shipments.unshift(newShipment);
     this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'SHIPMENT_CREATED', 'SHIPMENT', newShipment.id, null, newShipment);
     this.notify('SHIPMENT_CREATED', newShipment);
+    syncShipmentToSupabase(newShipment);
     return newShipment;
   }
 
@@ -815,6 +833,7 @@ class FleetMindStore {
 
     this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'SHIPMENT_ACCEPTED', 'SHIPMENT', s.id, null, { notes });
     this.notify('SHIPMENT_ACCEPTED', s);
+    syncShipmentToSupabase(s);
 
     // Auto-dispatch check
     if (this.systemSettings.auto_dispatch_high_priority && (s.priority === 'CRITICAL' || s.priority === 'HIGH')) {
@@ -843,6 +862,7 @@ class FleetMindStore {
 
     this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'SHIPMENT_REJECTED', 'SHIPMENT', s.id, null, { reason });
     this.notify('SHIPMENT_REJECTED', s);
+    syncShipmentToSupabase(s);
     return s;
   }
 
@@ -1005,6 +1025,8 @@ class FleetMindStore {
     });
 
     this.notify('SHIPMENT_ASSIGNED', shipment);
+    syncShipmentToSupabase(shipment);
+    syncVehicleToSupabase(lorry);
     return shipment;
   }
 
@@ -1032,11 +1054,17 @@ class FleetMindStore {
     // Update lorry & driver
     if (shipment.assigned_lorry_id) {
       const l = this.lorries.find((x) => x.id === shipment.assigned_lorry_id);
-      if (l) l.status = 'ON_ROUTE';
+      if (l) {
+        l.status = 'ON_ROUTE';
+        syncVehicleToSupabase(l);
+      }
     }
     if (shipment.assigned_driver_id) {
       const d = this.drivers.find((x) => x.id === shipment.assigned_driver_id);
-      if (d) d.availability_status = 'ON_DUTY';
+      if (d) {
+        d.availability_status = 'ON_DUTY';
+        syncDriverToSupabase(d);
+      }
     }
 
     // Update trip
@@ -1064,6 +1092,7 @@ class FleetMindStore {
 
     this.logAudit('driver@fleetmind.ai', 'DRIVER', 'CARGO_PICKED_UP', 'SHIPMENT', shipment.id);
     this.notify('SHIPMENT_IN_TRANSIT', shipment);
+    syncShipmentToSupabase(shipment);
     return shipment;
   }
 
@@ -1073,6 +1102,7 @@ class FleetMindStore {
     s.status = status;
     s.updated_at = new Date().toISOString();
     this.notify('SHIPMENT_UPDATED', s);
+    syncShipmentToSupabase(s);
     return s;
   }
 
@@ -1087,7 +1117,7 @@ class FleetMindStore {
 
   public createLorry(lorry: Partial<Lorry> & { lorry_code: string; registration_number: string }): Lorry {
     const newLorry: Lorry = {
-      id: `lorry-${Date.now()}`,
+      id: lorry.id || `lorry-${Date.now()}`,
       lorry_code: lorry.lorry_code,
       registration_number: lorry.registration_number,
       model: lorry.model || 'Commercial Carrier (6 Ton)',
@@ -1106,6 +1136,7 @@ class FleetMindStore {
     this.lorries.push(newLorry);
     this.logAudit('admin@fleetmind.ai', 'ADMIN', 'LORRY_CREATED', 'LORRY', newLorry.id, null, newLorry);
     this.notify('LORRY_CREATED', newLorry);
+    syncVehicleToSupabase(newLorry);
     return newLorry;
   }
 
@@ -1117,6 +1148,7 @@ class FleetMindStore {
     l.updated_at = new Date().toISOString();
     this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'LORRY_STATUS_UPDATED', 'LORRY', l.id, before, l);
     this.notify('LORRY_UPDATED', l);
+    syncVehicleToSupabase(l);
     if (status === 'UNAVAILABLE' || status === 'MAINTENANCE') {
       this.createAlert({
         type: 'LORRY_BREAKDOWN',
@@ -1140,7 +1172,7 @@ class FleetMindStore {
 
   public createDriver(driver: Partial<Driver> & { name: string; phone: string; license_number: string }): Driver {
     const newDriver: Driver = {
-      id: `driver-${Date.now()}`,
+      id: driver.id || `driver-${Date.now()}`,
       name: driver.name,
       phone: driver.phone,
       license_number: driver.license_number,
@@ -1158,6 +1190,7 @@ class FleetMindStore {
     this.drivers.push(newDriver);
     this.logAudit('admin@fleetmind.ai', 'ADMIN', 'DRIVER_CREATED', 'DRIVER', newDriver.id, null, newDriver);
     this.notify('DRIVER_CREATED', newDriver);
+    syncDriverToSupabase(newDriver);
     return newDriver;
   }
 
@@ -1167,6 +1200,7 @@ class FleetMindStore {
     d.availability_status = status;
     d.updated_at = new Date().toISOString();
     this.notify('DRIVER_UPDATED', d);
+    syncDriverToSupabase(d);
     return d;
   }
 
@@ -1186,7 +1220,7 @@ class FleetMindStore {
       driver.updated_at = new Date().toISOString();
     }
 
-    // Find linked lorry (DR-007 -> L-07, or default assigned vehicle)
+    // Find linked lorry
     const lorry = this.lorries.find(
       (l) => l.driver_id === driver?.id || l.id === driver?.assigned_lorry_id || l.lorry_code === 'L-11'
     ) || this.lorries[0];
@@ -1196,8 +1230,10 @@ class FleetMindStore {
       lorry.current_lng = data.longitude;
       if (data.address) lorry.current_address = data.address;
       lorry.updated_at = new Date().toISOString();
+      syncVehicleToSupabase(lorry);
     }
 
+    syncGpsTelemetryToSupabase(data);
     this.notify('DRIVER_GPS_UPDATED', { driver, lorry, telemetry: data });
     return { driver, lorry };
   }

@@ -30,6 +30,7 @@ import {
   Layers,
   Award,
   AlertTriangle,
+  Trash2,
 } from 'lucide-react';
 import { parseShipmentWithAI, ParsedShipment } from '../../../lib/ai/groq';
 
@@ -439,6 +440,18 @@ export default function ShipmentsPage() {
                                 Assign Carrier
                               </button>
                             )}
+
+                            <button
+                              onClick={() => {
+                                if (confirm(`Are you sure you want to permanently delete consignment ${s.shipment_code}?`)) {
+                                  fleetMindStore.deleteShipment(s.id);
+                                }
+                              }}
+                              className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition"
+                              title="Delete Consignment"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </td>
                       </tr>

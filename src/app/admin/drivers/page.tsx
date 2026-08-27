@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
 import { Driver, DriverStatus } from '../../../lib/optimization/types';
-import { UserCheck, Plus, X, Phone, User, CheckCircle2 } from 'lucide-react';
+import { UserCheck, Plus, X, Phone, User, CheckCircle2, Trash2 } from 'lucide-react';
 
 export default function AdminDriversPage() {
   const [drivers, setDrivers] = useState<Driver[]>(fleetMindStore.getDrivers());
@@ -54,6 +54,12 @@ export default function AdminDriversPage() {
     fleetMindStore.updateDriverStatus(driverId, status);
   };
 
+  const handleDeleteDriver = (driver: Driver) => {
+    if (confirm(`Are you sure you want to permanently delete pilot ${driver.name}?`)) {
+      fleetMindStore.deleteDriver(driver.id);
+    }
+  };
+
   return (
     <>
       <PortalHeader
@@ -89,6 +95,7 @@ export default function AdminDriversPage() {
                   <th className="py-3.5 px-6">Commercial License #</th>
                   <th className="py-3.5 px-6">Shift Window</th>
                   <th className="py-3.5 px-6">Availability</th>
+                  <th className="py-3.5 px-6 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
@@ -112,6 +119,15 @@ export default function AdminDriversPage() {
                         <option value="OFF_DUTY">OFF_DUTY</option>
                         <option value="UNAVAILABLE">UNAVAILABLE</option>
                       </select>
+                    </td>
+                    <td className="py-3.5 px-6 text-right">
+                      <button
+                        onClick={() => handleDeleteDriver(d)}
+                        className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                        title="Delete Driver Record"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}

@@ -20,6 +20,7 @@ import {
   AlertCircle,
   Award,
   Radio,
+  Trash2,
 } from 'lucide-react';
 
 export default function DispatcherDriversPage() {
@@ -281,16 +282,29 @@ export default function DispatcherDriversPage() {
                       </td>
 
                       <td className="py-4 px-4 text-right">
-                        <button
-                          onClick={() => {
-                            setSelectedDriver(d);
-                            setSelectedLorryId(d.assigned_lorry_id || '');
-                            setIsAssignModalOpen(true);
-                          }}
-                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg transition text-[11px]"
-                        >
-                          Assign Vehicle
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedDriver(d);
+                              setSelectedLorryId(d.assigned_lorry_id || '');
+                              setIsAssignModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg transition text-[11px]"
+                          >
+                            Assign Vehicle
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to permanently delete driver ${d.name}?`)) {
+                                fleetMindStore.deleteDriver(d.id);
+                              }
+                            }}
+                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                            title="Delete Driver"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

@@ -5,7 +5,7 @@ import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
 import { Lorry, LorryStatus, ReoptimizationDelta } from '../../../lib/optimization/types';
 import { handleDisruption } from '../../../lib/optimization/reoptimizer';
-import { Truck, Fuel, Gauge, Shield, AlertCircle, Wrench, CheckCircle2, Search, AlertTriangle, Sparkles, ArrowRight, X } from 'lucide-react';
+import { Truck, Fuel, Gauge, Shield, AlertCircle, Wrench, CheckCircle2, Search, AlertTriangle, Sparkles, ArrowRight, X, Trash2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function DispatcherFleetPage() {
@@ -289,6 +289,17 @@ export default function DispatcherFleetPage() {
                       className="px-2.5 py-1.5 text-[10px] font-bold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
                     >
                       Edit Cap
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to permanently delete vehicle ${lorry.lorry_code} (${lorry.registration_number})?`)) {
+                          fleetMindStore.deleteLorry(lorry.id);
+                        }
+                      }}
+                      className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition"
+                      title="Delete Vehicle"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
 

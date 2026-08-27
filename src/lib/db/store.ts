@@ -28,6 +28,10 @@ import {
   syncDriverToSupabase,
   syncProfileToSupabase,
   syncGpsTelemetryToSupabase,
+  deleteShipmentFromSupabase,
+  deleteVehicleFromSupabase,
+  deleteDriverFromSupabase,
+  deleteProfileFromSupabase,
   initSupabaseStoreSync,
 } from './supabase-sync';
 
@@ -807,6 +811,29 @@ class FleetMindStore {
     return null;
   }
 
+  public deleteUser(userId: string, adminEmail = 'admin@fleetmind.ai'): boolean {
+    const idx = this.users.findIndex((u) => u.id === userId || u.email === userId);
+    if (idx === -1) return false;
+    const deleted = this.users.splice(idx, 1)[0];
+
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('fleetmind_current_user');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.email === deleted.email || parsed.id === deleted.id) {
+            localStorage.removeItem('fleetmind_current_user');
+          }
+        } catch {}
+      }
+    }
+
+    this.logAudit(adminEmail, 'ADMIN', 'USER_DELETED', 'USER', deleted.id, deleted, null);
+    this.notify('USER_DELETED', deleted);
+    deleteProfileFromSupabase(deleted.id);
+    return true;
+  }
+
   public registerPendingDispatcher(data: {
     full_name: string;
     email: string;
@@ -1259,6 +1286,16 @@ class FleetMindStore {
     return s;
   }
 
+  public deleteShipment(shipmentId: string, userEmail = 'admin@fleetmind.ai'): boolean {
+    const idx = this.shipments.findIndex((s) => s.id === shipmentId || s.shipment_code === shipmentId);
+    if (idx === -1) return false;
+    const deleted = this.shipments.splice(idx, 1)[0];
+    this.logAudit(userEmail, 'ADMIN', 'SHIPMENT_DELETED', 'SHIPMENT', deleted.id, deleted, null);
+    this.notify('SHIPMENT_DELETED', deleted);
+    deleteShipmentFromSupabase(deleted.id);
+    return true;
+  }
+
   // --- Lorry Operations ---
   public getLorries(): Lorry[] {
     return [...this.lorries];
@@ -1312,6 +1349,21 @@ class FleetMindStore {
       });
     }
     return l;
+  }
+
+  public deleteLorry(lorryId: string, adminEmail = 'admin@fleetmind.ai'): boolean {
+    const idx = this.lorries.findIndex((l) => l.id === lorryId || l.lorry_code === lorryId);
+    if (idx === -1) return false;
+    const deleted = this.lorries.splice(idx, 1)[0];
+    // Unassign driver if paired
+    const pairedDriver = this.drivers.find((d) => d.assigned_lorry_id === deleted.id);
+    if (pairedDriver) {
+      pairedDriver.assigned_lorry_id = null;
+    }
+    this.logAudit(adminEmail, 'ADMIN', 'LORRY_DELETED', 'LORRY', deleted.id, deleted, null);
+    this.notify('LORRY_DELETED', deleted);
+    deleteVehicleFromSupabase(deleted.id);
+    return true;
   }
 
   // --- Driver Operations ---
@@ -1385,6 +1437,22 @@ class FleetMindStore {
     this.notify('DRIVER_UPDATED', d);
     syncDriverToSupabase(d);
     return d;
+  }
+
+  public deleteDriver(driverId: string, adminEmail = 'admin@fleetmind.ai'): boolean {
+    const idx = this.drivers.findIndex((d) => d.id === driverId || d.user_id === driverId);
+    if (idx === -1) return false;
+    const deleted = this.drivers.splice(idx, 1)[0];
+    // Unassign lorry if paired
+    const pairedLorry = this.lorries.find((l) => l.driver_id === deleted.id);
+    if (pairedLorry) {
+      pairedLorry.driver_id = null;
+      pairedLorry.assigned_driver_name = undefined;
+    }
+    this.logAudit(adminEmail, 'ADMIN', 'DRIVER_DELETED', 'DRIVER', deleted.id, deleted, null);
+    this.notify('DRIVER_DELETED', deleted);
+    deleteDriverFromSupabase(deleted.id);
+    return true;
   }
 
   public updateDriverGPSLocation(data: {

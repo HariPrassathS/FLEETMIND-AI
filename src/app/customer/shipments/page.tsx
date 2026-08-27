@@ -17,6 +17,7 @@ import {
   Truck,
   CheckCircle2,
   AlertTriangle,
+  Trash2,
 } from 'lucide-react';
 
 export default function CustomerShipmentsPage() {
@@ -203,6 +204,19 @@ export default function CustomerShipmentsPage() {
                   <span>Track Consignment</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
+                {s.status === 'PENDING' && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`Are you sure you want to cancel and delete consignment ${s.shipment_code}?`)) {
+                        fleetMindStore.deleteShipment(s.id);
+                      }
+                    }}
+                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition"
+                    title="Cancel & Delete Consignment"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           ))

@@ -361,3 +361,55 @@ export async function syncGpsTelemetryToSupabase(telemetry: {
     // Non-blocking telemetry
   }
 }
+
+/**
+ * Deletes a shipment from Supabase PostgreSQL.
+ */
+export async function deleteShipmentFromSupabase(id: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    await supabase.from('shipments').delete().or(`id.eq.${id},id.eq.${ensureUUID(id)},shipment_code.eq.${id}`);
+  } catch (err) {
+    console.warn('[Supabase Sync] Shipment delete notice:', err);
+  }
+}
+
+/**
+ * Deletes a vehicle from Supabase PostgreSQL.
+ */
+export async function deleteVehicleFromSupabase(id: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    await supabase.from('vehicles').delete().or(`id.eq.${id},id.eq.${ensureUUID(id)},lorry_code.eq.${id}`);
+  } catch (err) {
+    console.warn('[Supabase Sync] Vehicle delete notice:', err);
+  }
+}
+
+/**
+ * Deletes a driver from Supabase PostgreSQL.
+ */
+export async function deleteDriverFromSupabase(id: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    await supabase.from('drivers').delete().or(`id.eq.${id},id.eq.${ensureUUID(id)}`);
+  } catch (err) {
+    console.warn('[Supabase Sync] Driver delete notice:', err);
+  }
+}
+
+/**
+ * Deletes a user profile from Supabase PostgreSQL.
+ */
+export async function deleteProfileFromSupabase(idOrEmail: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    await supabase.from('profiles').delete().or(`id.eq.${idOrEmail},id.eq.${ensureUUID(idOrEmail)},email.eq.${idOrEmail}`);
+  } catch (err) {
+    console.warn('[Supabase Sync] Profile delete notice:', err);
+  }
+}

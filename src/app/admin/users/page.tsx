@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Building2,
   Phone,
+  Trash2,
 } from 'lucide-react';
 
 export default function AdminUsersPage() {
@@ -44,6 +45,12 @@ export default function AdminUsersPage() {
 
   const handleToggleStatus = (user: UserProfile) => {
     fleetMindStore.updateUserStatus(user.id, !user.is_active);
+  };
+
+  const handleDeleteUser = (user: UserProfile) => {
+    if (confirm(`Are you sure you want to permanently delete the account for ${user.full_name} (${user.email})? This action cannot be undone.`)) {
+      fleetMindStore.deleteUser(user.id);
+    }
   };
 
   const handleRoleChange = (userId: string, newRole: UserRole) => {
@@ -231,16 +238,25 @@ export default function AdminUsersPage() {
                         </span>
                       </td>
                       <td className="py-3.5 px-6 text-right">
-                        <button
-                          onClick={() => handleToggleStatus(u)}
-                          className={`text-xs font-bold px-3 py-1 rounded-lg transition ${
-                            u.is_active
-                              ? 'text-rose-600 hover:bg-rose-50'
-                              : 'text-emerald-600 hover:bg-emerald-50'
-                          }`}
-                        >
-                          {u.is_active ? 'Deactivate' : 'Activate'}
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleToggleStatus(u)}
+                            className={`text-xs font-bold px-2.5 py-1 rounded-lg transition ${
+                              u.is_active
+                                ? 'text-amber-600 hover:bg-amber-50 border border-amber-200'
+                                : 'text-emerald-600 hover:bg-emerald-50 border border-emerald-200'
+                            }`}
+                          >
+                            {u.is_active ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(u)}
+                            className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                            title="Delete User Account"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

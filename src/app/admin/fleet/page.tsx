@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
 import { Lorry, LorryStatus } from '../../../lib/optimization/types';
-import { Truck, Plus, X, Fuel, Gauge, CheckCircle2 } from 'lucide-react';
+import { Truck, Plus, X, Fuel, Gauge, CheckCircle2, Trash2 } from 'lucide-react';
 
 export default function AdminFleetPage() {
   const [lorries, setLorries] = useState<Lorry[]>(fleetMindStore.getLorries());
@@ -78,6 +78,7 @@ export default function AdminFleetPage() {
                   <th className="py-3.5 px-6">Max Volume</th>
                   <th className="py-3.5 px-6">Fuel Economy</th>
                   <th className="py-3.5 px-6">Status</th>
+                  <th className="py-3.5 px-6 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
@@ -101,6 +102,19 @@ export default function AdminFleetPage() {
                       >
                         {l.status}
                       </span>
+                    </td>
+                    <td className="py-3.5 px-6 text-right">
+                      <button
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to permanently delete vehicle ${l.lorry_code} (${l.registration_number})?`)) {
+                            fleetMindStore.deleteLorry(l.id);
+                          }
+                        }}
+                        className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                        title="Delete Vehicle"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}

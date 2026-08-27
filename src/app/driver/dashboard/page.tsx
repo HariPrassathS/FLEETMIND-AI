@@ -25,6 +25,10 @@ import {
   Phone,
   Building2,
   Package,
+  Fuel,
+  IndianRupee,
+  Receipt,
+  PlusCircle,
 } from 'lucide-react';
 import { DriverGpsTracker } from '../../../components/driver/driver-gps-tracker';
 
@@ -34,6 +38,16 @@ export default function DriverDashboardPage() {
   const [shipments, setShipments] = useState(fleetMindStore.getShipments());
   const [lorries, setLorries] = useState(fleetMindStore.getLorries());
   const [drivers, setDrivers] = useState(fleetMindStore.getDrivers());
+  const [expenses, setExpenses] = useState(fleetMindStore.getExpenses());
+
+  // On-Road Expense State
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [expenseCategory, setExpenseCategory] = useState<'FUEL' | 'TOLL' | 'MAINTENANCE' | 'DRIVER_ALLOWANCE' | 'OTHER'>('FUEL');
+  const [expenseAmount, setExpenseAmount] = useState('3500');
+  const [expenseLiters, setExpenseLiters] = useState('36');
+  const [expenseLocation, setExpenseLocation] = useState('');
+  const [expenseDescription, setExpenseDescription] = useState('');
+  const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
 
   // Delivery Verification State
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
@@ -65,6 +79,7 @@ export default function DriverDashboardPage() {
       setShipments(fleetMindStore.getShipments());
       setLorries(fleetMindStore.getLorries());
       setDrivers(fleetMindStore.getDrivers());
+      setExpenses(fleetMindStore.getExpenses());
     });
     return unsub;
   }, []);
@@ -230,6 +245,45 @@ export default function DriverDashboardPage() {
     setIsDelayModalOpen(false);
   };
 
+  const handleExpenseSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expenseAmount || Number(expenseAmount) <= 0) return;
+
+    setIsSubmittingExpense(true);
+    const lorryId = assignedLorry?.id || 'lorry-01';
+    const lorryCode = assignedLorry?.lorry_code || 'L-01';
+    const driverId = user?.id || currentDriver?.id || 'driver-01';
+    const driverName = user?.full_name || currentDriver?.name || 'Pilot Driver';
+
+    fleetMindStore.createExpense({
+      lorry_id: lorryId,
+      lorry_code: lorryCode,
+      driver_id: driverId,
+      driver_name: driverName,
+      trip_id: activeRoute?.id,
+      category: expenseCategory,
+      amount_inr: Number(expenseAmount),
+      fuel_liters: expenseCategory === 'FUEL' ? Number(expenseLiters) : undefined,
+      fuel_station: expenseLocation || `${currentShipment?.pickup_city || 'Highway'} Fuel Pump`,
+      description: expenseDescription || `${expenseCategory} on ${currentShipment ? `${currentShipment.pickup_city} ➔ ${currentShipment.destination_city}` : 'Corridor'}`,
+      date: new Date().toISOString(),
+    });
+
+    setIsSubmittingExpense(false);
+    setIsExpenseModalOpen(false);
+    setExpenseDescription('');
+    setExpenseLocation('');
+    setSuccessToast(`₹${Number(expenseAmount).toLocaleString()} ${expenseCategory} Logged & Sent to Dispatcher!`);
+    setTimeout(() => setSuccessToast(null), 3500);
+  };
+
+  // Filter expenses logged by this driver
+  const myExpenses = expenses.filter(
+    (e) => (currentDriver && (e.driver_id === currentDriver.id || e.driver_name === currentDriver.name)) ||
+           (user?.full_name && e.driver_name?.toLowerCase() === user.full_name.toLowerCase()) ||
+           (assignedLorry && (e.lorry_id === assignedLorry.id || e.lorry_code === assignedLorry.lorry_code))
+  );
+
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-lg mx-auto">
       {/* Toast */}
@@ -276,6 +330,27 @@ export default function DriverDashboardPage() {
         lorryCode={assignedLorry?.lorry_code || 'L-01'}
         shipmentId={currentShipment?.id || 'standby'}
       />
+
+      {/* On-Road Expense & Fuel Quick Log Trigger */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+            <Fuel className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="text-xs font-black text-slate-900">On-Road Expense Logger</h4>
+            <span className="text-[10px] text-slate-500 font-medium">Diesel Fuel • FASTag Tolls • Food • Repairs</span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setIsExpenseModalOpen(true)}
+          className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 shrink-0"
+        >
+          <PlusCircle className="w-4 h-4" />
+          <span>Log Spend</span>
+        </button>
+      </div>
 
       {/* Next Stop Card / Standby Card */}
       {currentShipment && dynamicStop ? (
@@ -687,6 +762,55 @@ export default function DriverDashboardPage() {
         </div>
       )}
 
+      {/* Recent On-Road Expenses Card */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+            <Receipt className="w-3.5 h-3.5 text-amber-600" /> Logged Road Expenses ({myExpenses.length})
+          </span>
+          <button
+            onClick={() => setIsExpenseModalOpen(true)}
+            className="text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+          >
+            <PlusCircle className="w-3.5 h-3.5" /> Log New
+          </button>
+        </div>
+
+        {myExpenses.length === 0 ? (
+          <div className="text-center py-4 text-xs text-slate-400 font-medium">
+            No on-road expenses recorded yet for this shift.
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            {myExpenses.slice(0, 5).map((exp) => (
+              <div
+                key={exp.id}
+                className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between text-xs"
+              >
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                      exp.category === 'FUEL'
+                        ? 'bg-blue-100 text-blue-800'
+                        : exp.category === 'TOLL'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {exp.category}
+                    </span>
+                    <span className="font-bold text-slate-800 truncate max-w-[150px]">{exp.description}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 block font-mono">
+                    {new Date(exp.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {exp.lorry_code}
+                  </span>
+                </div>
+                <strong className="text-slate-900 font-black text-sm">₹{exp.amount_inr.toLocaleString()}</strong>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Report Delay Modal */}
       {isDelayModalOpen && (
         <div
@@ -731,6 +855,133 @@ export default function DriverDashboardPage() {
                   className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm"
                 >
                   Broadcast Alert
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* On-Road Expense Logging Modal */}
+      {isExpenseModalOpen && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsExpenseModalOpen(false);
+          }}
+        >
+          <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto animate-in fade-in">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-bold">
+                  <Fuel className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black">Log Road Expense</h3>
+                  <span className="text-[10px] text-amber-100 font-medium">Syncs directly to Dispatcher desk</span>
+                </div>
+              </div>
+              <button onClick={() => setIsExpenseModalOpen(false)} className="text-white/80 hover:text-white p-1">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExpenseSubmit} className="p-5 space-y-4 text-xs">
+              {/* Category Picker */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">Expense Type</label>
+                <select
+                  value={expenseCategory}
+                  onChange={(e) => setExpenseCategory(e.target.value as any)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-bold bg-white text-slate-900 focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="FUEL">⛽ Diesel Fuel Refill</option>
+                  <option value="TOLL">🛣️ Highway FASTag / Toll Plaza</option>
+                  <option value="MAINTENANCE">🔧 Vehicle Repair / Puncture</option>
+                  <option value="DRIVER_ALLOWANCE">🍱 Food & Driver Allowance</option>
+                  <option value="OTHER">📦 Other On-Road Expense</option>
+                </select>
+              </div>
+
+              {/* Amount ₹ INR */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">Amount (₹ INR)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 font-bold text-slate-400">₹</span>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={expenseAmount}
+                    onChange={(e) => setExpenseAmount(e.target.value)}
+                    placeholder="e.g. 3500"
+                    className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-slate-200 font-black text-slate-900 focus:ring-2 focus:ring-amber-500 text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Fuel Liters if Fuel */}
+              {expenseCategory === 'FUEL' && (
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase mb-1">Fuel Quantity (Litres)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={expenseLiters}
+                    onChange={(e) => setExpenseLiters(e.target.value)}
+                    placeholder="e.g. 36.5"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-900 focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              )}
+
+              {/* Station / Plaza Name */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">
+                  {expenseCategory === 'FUEL' ? 'Fuel Station' : expenseCategory === 'TOLL' ? 'Toll Plaza Name' : 'Location'}
+                </label>
+                <input
+                  type="text"
+                  value={expenseLocation}
+                  onChange={(e) => setExpenseLocation(e.target.value)}
+                  placeholder={
+                    expenseCategory === 'FUEL'
+                      ? 'e.g. Indian Oil COCO, Salem NH-44'
+                      : expenseCategory === 'TOLL'
+                      ? 'e.g. Omalur Toll Plaza FASTag'
+                      : 'e.g. Workshop / Rest Stop'
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-900 focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">Receipt No / Notes</label>
+                <input
+                  type="text"
+                  value={expenseDescription}
+                  onChange={(e) => setExpenseDescription(e.target.value)}
+                  placeholder="e.g. Full tank diesel before Ghat section"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-900 focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsExpenseModalOpen(false)}
+                  className="flex-1 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingExpense}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-black rounded-xl shadow-md transition flex items-center justify-center gap-1.5"
+                >
+                  <Receipt className="w-4 h-4" />
+                  <span>Submit to Dispatch</span>
                 </button>
               </div>
             </form>

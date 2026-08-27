@@ -55,6 +55,163 @@ export const SEED_CUSTOMERS: any[] = [];
 export const SEED_ALERTS: SystemAlert[] = [];
 export const SEED_AUDIT_LOGS: AuditLog[] = [];
 
+export const SEED_OPTIMIZATION_RUNS: OptimizationResult[] = [
+  {
+    run_id: 'OPT-2026-0827-01',
+    timestamp: new Date(Date.now() - 3600 * 1000 * 14).toISOString(),
+    status: 'SUCCESS',
+    execution_time_ms: 320,
+    before_metrics: {
+      total_lorries_used: 5,
+      total_distance_km: 1840,
+      total_fuel_liters: 368,
+      total_cost_inr: 47840,
+      late_shipments_count: 2,
+      on_time_percentage: 78.5,
+      avg_capacity_utilization_pct: 54.2,
+    },
+    after_metrics: {
+      total_lorries_used: 3,
+      total_distance_km: 1320,
+      total_fuel_liters: 264,
+      total_cost_inr: 34320,
+      late_shipments_count: 0,
+      on_time_percentage: 100,
+      avg_capacity_utilization_pct: 91.8,
+    },
+    savings: {
+      cost_inr: 13520,
+      cost_savings_pct: 28.3,
+      fuel_liters: 104,
+      fuel_savings_pct: 28.3,
+      distance_km: 520,
+      distance_savings_pct: 28.3,
+      lorries_saved: 2,
+    },
+    assignments: [
+      {
+        lorry_id: 'lorry-01',
+        lorry_code: 'L-01',
+        driver_id: 'driver-01',
+        driver_name: 'Murugan Selvam',
+        shipment_ids: ['FM-260827-8192', 'FM-260827-4109'],
+        route: {
+          id: 'route-opt-1',
+          route_code: 'RT-KARUR-KOCHI',
+          lorry_id: 'lorry-01',
+          lorry_code: 'L-01',
+          driver_id: 'driver-01',
+          driver_name: 'Murugan Selvam',
+          total_distance_km: 340,
+          estimated_duration_minutes: 360,
+          fuel_consumption_liters: 68,
+          estimated_cost: 8840,
+          status: 'ASSIGNED',
+          stops: [],
+          shipment_ids: ['FM-260827-8192'],
+          total_weight_kg: 8500,
+          total_volume_m3: 24,
+          weight_utilization_pct: 85,
+          volume_utilization_pct: 80,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        score_details: {} as any,
+        ai_explanation: 'Consolidated Karur Textile export consignment with Dharapuram freight for optimal Kochi Port turnaround.',
+      },
+    ],
+    unassigned: [],
+    groups: [],
+    steps_completed: [
+      'Clustering spatial demand hubs',
+      'Bin-packing weight & volume constraints',
+      'VRP highway turn-by-turn solver',
+      'Carrier SLA verification',
+    ],
+  },
+  {
+    run_id: 'OPT-2026-0826-03',
+    timestamp: new Date(Date.now() - 3600 * 1000 * 38).toISOString(),
+    status: 'SUCCESS',
+    execution_time_ms: 410,
+    before_metrics: {
+      total_lorries_used: 6,
+      total_distance_km: 2450,
+      total_fuel_liters: 490,
+      total_cost_inr: 63700,
+      late_shipments_count: 3,
+      on_time_percentage: 72.0,
+      avg_capacity_utilization_pct: 49.0,
+    },
+    after_metrics: {
+      total_lorries_used: 4,
+      total_distance_km: 1720,
+      total_fuel_liters: 344,
+      total_cost_inr: 44720,
+      late_shipments_count: 0,
+      on_time_percentage: 99.2,
+      avg_capacity_utilization_pct: 88.5,
+    },
+    savings: {
+      cost_inr: 18980,
+      cost_savings_pct: 29.8,
+      fuel_liters: 146,
+      fuel_savings_pct: 29.8,
+      distance_km: 730,
+      distance_savings_pct: 29.8,
+      lorries_saved: 2,
+    },
+    assignments: [],
+    unassigned: [],
+    groups: [],
+    steps_completed: [
+      'Chennai - Bengaluru highway matrix optimization',
+      'FASTag toll avoidance analysis',
+      'Multi-drop depot consolidation',
+    ],
+  },
+  {
+    run_id: 'OPT-2026-0825-02',
+    timestamp: new Date(Date.now() - 3600 * 1000 * 62).toISOString(),
+    status: 'SUCCESS',
+    execution_time_ms: 280,
+    before_metrics: {
+      total_lorries_used: 4,
+      total_distance_km: 1560,
+      total_fuel_liters: 312,
+      total_cost_inr: 40560,
+      late_shipments_count: 1,
+      on_time_percentage: 84.0,
+      avg_capacity_utilization_pct: 58.0,
+    },
+    after_metrics: {
+      total_lorries_used: 2,
+      total_distance_km: 1040,
+      total_fuel_liters: 208,
+      total_cost_inr: 27040,
+      late_shipments_count: 0,
+      on_time_percentage: 100,
+      avg_capacity_utilization_pct: 94.0,
+    },
+    savings: {
+      cost_inr: 13520,
+      cost_savings_pct: 33.3,
+      fuel_liters: 104,
+      fuel_savings_pct: 33.3,
+      distance_km: 520,
+      distance_savings_pct: 33.3,
+      lorries_saved: 2,
+    },
+    assignments: [],
+    unassigned: [],
+    groups: [],
+    steps_completed: [
+      'Salem - Madurai - Tuticorin Port speed routing',
+      'Dynamic pallet weight optimization',
+    ],
+  },
+];
+
 // In-memory Database Store with Observer Pattern for Real-time reactivity
 class FleetMindStore {
   private users: UserProfile[] = [];
@@ -2406,7 +2563,16 @@ class FleetMindStore {
 
   // --- History & Simulations ---
   public getOptimizationRuns(): OptimizationResult[] {
+    if (this.optimizationRuns.length === 0) {
+      this.optimizationRuns = [...SEED_OPTIMIZATION_RUNS];
+    }
     return [...this.optimizationRuns];
+  }
+
+  public recordOptimizationRun(run: OptimizationResult) {
+    this.optimizationRuns.unshift(run);
+    this.saveToLocalStorage();
+    this.notify('OPTIMIZATION_RECORDED', run);
   }
 
   public getSimulationRuns(): SimulationResult[] {
@@ -2626,25 +2792,53 @@ class FleetMindStore {
     return [...this.expenses];
   }
 
-  public createExpense(exp: Partial<ExpenseRecord> & { category: any; amount_inr: number; description: string }): ExpenseRecord {
+  public createExpense(exp: Partial<ExpenseRecord> & { category: any; amount_inr: number; description: string; fuel_liters?: number; fuel_station?: string }): ExpenseRecord {
     const lorry = exp.lorry_id ? this.getLorryById(exp.lorry_id) : undefined;
+    const driver = exp.driver_id ? this.getDriverById(exp.driver_id) : (lorry?.driver_id ? this.getDriverById(lorry.driver_id) : undefined);
+    
     const newExp: ExpenseRecord = {
-      id: `exp-${Date.now()}`,
+      id: `exp-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
       trip_id: exp.trip_id,
       trip_code: exp.trip_code,
-      lorry_id: exp.lorry_id,
-      lorry_code: lorry?.lorry_code || exp.lorry_code,
-      driver_id: exp.driver_id,
-      driver_name: exp.driver_name,
+      lorry_id: exp.lorry_id || lorry?.id || 'lorry-01',
+      lorry_code: lorry?.lorry_code || exp.lorry_code || 'L-01',
+      driver_id: driver?.id || exp.driver_id,
+      driver_name: driver?.name || exp.driver_name || 'Pilot Driver',
       category: exp.category,
-      amount_inr: exp.amount_inr,
+      amount_inr: Number(exp.amount_inr),
       date: exp.date || new Date().toISOString(),
       description: exp.description,
-      estimated_amount_inr: exp.estimated_amount_inr,
+      estimated_amount_inr: exp.estimated_amount_inr || exp.amount_inr,
       receipt_url: exp.receipt_url,
       created_at: new Date().toISOString(),
     };
     this.expenses.unshift(newExp);
+    this.saveToLocalStorage();
+
+    // If it's a Fuel expense, also register a FuelRecord
+    if (exp.category === 'FUEL') {
+      const fuelLiters = exp.fuel_liters || Math.round(Number(exp.amount_inr) / 96.5);
+      this.createFuelRecord({
+        lorry_id: newExp.lorry_id || 'lorry-01',
+        fuel_quantity_liters: fuelLiters,
+        fuel_price_per_liter: 96.5,
+        odometer_km: 52000,
+        distance_km: Math.round(fuelLiters * 5.2),
+        fuel_station: exp.fuel_station || exp.description || 'Highway Fuel Pump',
+        date: newExp.date,
+      });
+    }
+
+    // Notify dispatchers
+    this.createNotification({
+      user_id: 'dispatcher@fleetmind.ai',
+      title: `💰 On-Road Expense Logged: ₹${newExp.amount_inr.toLocaleString()} (${newExp.category})`,
+      message: `Driver ${newExp.driver_name} submitted ₹${newExp.amount_inr.toLocaleString()} for ${newExp.lorry_code}: ${newExp.description}`,
+      severity: 'LOW',
+      type: 'SYSTEM_ALERT',
+      action_url: `/dispatcher/expenses`,
+    });
+
     this.notify('EXPENSE_CREATED', newExp);
     return newExp;
   }

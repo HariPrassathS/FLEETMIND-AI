@@ -216,33 +216,41 @@ export default function ShipmentsPage() {
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">
         {/* KPI Cards & Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
             <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">Total Consignments</span>
             <div className="text-2xl font-black text-slate-900">{shipments.length}</div>
-            <span className="text-[11px] font-semibold text-slate-500">Across commercial network</span>
+            <span className="text-[11px] font-semibold text-slate-500">Across network</span>
           </div>
 
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
+          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
             <span className="text-[10px] font-black uppercase text-amber-600 block tracking-wider">Pending Review</span>
             <div className="text-2xl font-black text-amber-700">{pendingReviewCount}</div>
-            <span className="text-[11px] font-semibold text-amber-600/80">Requires dispatcher approval</span>
+            <span className="text-[11px] font-semibold text-amber-600/80">Awaiting approval</span>
           </div>
 
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
-            <span className="text-[10px] font-black uppercase text-blue-600 block tracking-wider">Active In Transit</span>
+          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
+            <span className="text-[10px] font-black uppercase text-blue-600 block tracking-wider">Assigned</span>
             <div className="text-2xl font-black text-blue-700">
-              {shipments.filter((s) => s.status === 'IN_TRANSIT' || s.status === 'ASSIGNED').length}
+              {shipments.filter((s) => s.status === 'ASSIGNED' || s.status === 'ACCEPTED').length}
             </div>
-            <span className="text-[11px] font-semibold text-blue-600/80">Broadcasting live GPS</span>
+            <span className="text-[11px] font-semibold text-blue-600/80">Staged for pilot</span>
           </div>
 
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
-            <span className="text-[10px] font-black uppercase text-emerald-600 block tracking-wider">Delivered & Closed</span>
+          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
+            <span className="text-[10px] font-black uppercase text-indigo-600 block tracking-wider">In Transit</span>
+            <div className="text-2xl font-black text-indigo-700">
+              {shipments.filter((s) => s.status === 'IN_TRANSIT').length}
+            </div>
+            <span className="text-[11px] font-semibold text-indigo-600/80">Broadcasting GPS</span>
+          </div>
+
+          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
+            <span className="text-[10px] font-black uppercase text-emerald-600 block tracking-wider">Delivered</span>
             <div className="text-2xl font-black text-emerald-700">
               {shipments.filter((s) => s.status === 'DELIVERED').length}
             </div>
-            <span className="text-[11px] font-semibold text-emerald-600/80">100% Verified OTP signoff</span>
+            <span className="text-[11px] font-semibold text-emerald-600/80">100% Verified POD</span>
           </div>
         </div>
 

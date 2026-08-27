@@ -53,12 +53,12 @@ export default function DispatcherDashboardPage() {
 
   // Compute live KPIs
   const totalShipments = shipments.length;
-  const pendingCount = shipments.filter((s) => s.status === 'PENDING').length;
-  const assignedCount = shipments.filter((s) => s.status === 'ASSIGNED').length;
+  const pendingCount = shipments.filter((s) => s.status === 'PENDING' || s.status === 'PENDING_REVIEW' || s.status === 'PENDING_DISPATCH').length;
+  const assignedCount = shipments.filter((s) => s.status === 'ASSIGNED' || s.status === 'ACCEPTED').length;
   const inTransitCount = shipments.filter((s) => s.status === 'IN_TRANSIT').length;
   const deliveredCount = shipments.filter((s) => s.status === 'DELIVERED').length;
   const atRiskShipments = shipments.filter(
-    (s) => s.priority === 'CRITICAL' || s.status === 'DELAYED' || s.shipment_code.includes('998')
+    (s) => s.priority === 'CRITICAL' || s.status === 'DELAYED'
   );
 
   const availableLorries = lorries.filter((l) => l.status === 'AVAILABLE').length;

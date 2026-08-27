@@ -59,15 +59,20 @@ export default function ShipmentsPage() {
   const [parsedData, setParsedData] = useState<ParsedShipment | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  const [lorries, setLorries] = useState<Lorry[]>(fleetMindStore.getLorries());
+  const [drivers, setDrivers] = useState<Driver[]>(fleetMindStore.getDrivers());
+
   useEffect(() => {
+    setShipments(fleetMindStore.getShipments());
+    setLorries(fleetMindStore.getLorries());
+    setDrivers(fleetMindStore.getDrivers());
     const unsub = fleetMindStore.subscribe(() => {
       setShipments(fleetMindStore.getShipments());
+      setLorries(fleetMindStore.getLorries());
+      setDrivers(fleetMindStore.getDrivers());
     });
     return unsub;
   }, []);
-
-  const lorries = fleetMindStore.getLorries();
-  const drivers = fleetMindStore.getDrivers();
 
   const pendingReviewCount = shipments.filter(
     (s) => s.status === 'PENDING_REVIEW' || s.status === 'PENDING' || s.status === 'PENDING_DISPATCH'

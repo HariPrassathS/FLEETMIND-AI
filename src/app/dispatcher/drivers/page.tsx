@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
-import { Driver, DriverStatus } from '../../../lib/optimization/types';
+import { Driver, DriverStatus, Lorry } from '../../../lib/optimization/types';
 import {
   Users,
   UserCheck,
@@ -25,6 +25,7 @@ import {
 
 export default function DispatcherDriversPage() {
   const [drivers, setDrivers] = useState<Driver[]>(fleetMindStore.getDrivers());
+  const [lorries, setLorries] = useState<Lorry[]>(fleetMindStore.getLorries());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
@@ -44,13 +45,14 @@ export default function DispatcherDriversPage() {
   });
 
   useEffect(() => {
+    setDrivers(fleetMindStore.getDrivers());
+    setLorries(fleetMindStore.getLorries());
     const unsub = fleetMindStore.subscribe(() => {
       setDrivers(fleetMindStore.getDrivers());
+      setLorries(fleetMindStore.getLorries());
     });
     return unsub;
   }, []);
-
-  const lorries = fleetMindStore.getLorries();
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();

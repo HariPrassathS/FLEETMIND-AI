@@ -32,6 +32,10 @@ import {
   Award,
   AlertTriangle,
   Trash2,
+  Zap,
+  Navigation,
+  Activity,
+  BarChart3,
 } from 'lucide-react';
 import { parseShipmentWithAI, ParsedShipment } from '../../../lib/ai/groq';
 
@@ -42,6 +46,12 @@ export default function ShipmentsPage() {
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING_REVIEW'>('ALL');
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  // Autonomous Auto-Dispatch Toggle
+  const [autoDispatchCritical, setAutoDispatchCritical] = useState<boolean>(
+    fleetMindStore.getSystemSettings().auto_dispatch_critical !== false
+  );
 
   // Selected shipment for 6-Section Full Review Modal
   const [reviewShipment, setReviewShipment] = useState<Shipment | null>(null);
@@ -75,6 +85,23 @@ export default function ShipmentsPage() {
     });
     return unsub;
   }, []);
+
+  const toggleAutoDispatch = () => {
+    const nextVal = !autoDispatchCritical;
+    setAutoDispatchCritical(nextVal);
+    fleetMindStore.updateSystemSettings({ auto_dispatch_critical: nextVal });
+    
+    if (nextVal) {
+      const unassignedCritical = shipments.filter((s) => s.priority === 'CRITICAL' && !s.assigned_lorry_id);
+      unassignedCritical.forEach((s) => {
+        fleetMindStore.tryAutoDispatchShipment(s.id);
+      });
+      setSuccessToast(`⚡ Autonomous Auto-Dispatch Active! Processed ${unassignedCritical.length} critical consignment(s).`);
+    } else {
+      setSuccessToast('Autonomous Auto-Dispatch turned OFF.');
+    }
+    setTimeout(() => setSuccessToast(null), 3500);
+  };
 
   const pendingReviewCount = shipments.filter(
     (s) => s.status === 'PENDING_REVIEW' || s.status === 'PENDING' || s.status === 'PENDING_DISPATCH'
@@ -119,37 +146,53 @@ export default function ShipmentsPage() {
     setRejectReason('');
   };
 
-  const handleAssignLorry = (e: React.FormEvent) => {
+  const handleManualAssign = (e: React.FormEvent) => {
     e.preventDefault();
     if (!assignShipment || !selectedLorryId) return;
 
-    fleetMindStore.assignLorryAndDriver(assignShipment.id, selectedLorryId, selectedDriverId || undefined);
+    fleetMindStore.assignLorryAndDriver(
+      assignShipment.id,
+      selectedLorryId,
+      selectedDriverId || undefined
+    );
+
+    setSuccessToast(`Consignment ${assignShipment.shipment_code} successfully assigned!`);
+    setTimeout(() => setSuccessToast(null), 3000);
     setAssignShipment(null);
     setSelectedLorryId('');
     setSelectedDriverId('');
   };
 
-  const handleParseWithAI = async () => {
-    if (!aiPrompt.trim()) return;
+  const handleAiParse = async () => {
     setIsAiParsing(true);
     setAiError(null);
     try {
-      const result = await parseShipmentWithAI(aiPrompt);
-      setParsedData(result);
+      const parsed = await parseShipmentWithAI(aiPrompt);
+      if (parsed) {
+        setParsedData(parsed);
+      } else {
+        setAiError('Failed to parse text. Please check the format.');
+      }
     } catch (err: any) {
-      setAiError(err.message || 'Failed to parse shipment with FleetMind AI');
+      setAiError(err.message || 'Error occurred while calling AI');
     } finally {
       setIsAiParsing(false);
     }
   };
 
-  const handleConfirmAiShipment = () => {
+  const handleAiConfirm = () => {
     if (!parsedData) return;
 
     fleetMindStore.createShipment({
+      customer_name: parsedData.sender_company || parsedData.sender_name || 'Commercial Shipper',
+      sender_name: parsedData.sender_name || 'Shipper Contact',
+      sender_company: parsedData.sender_company,
+      sender_phone: parsedData.sender_phone || '+91 98410 00000',
       description: parsedData.commodity,
       weight_kg: parsedData.weight_kg,
-      volume_m3: parsedData.volume_m3,
+      volume_m3: parsedData.volume_m3 || Number((parsedData.weight_kg / 350).toFixed(1)),
+      package_count: parsedData.package_count || 1,
+      fragile: parsedData.fragile || false,
       pickup_city: parsedData.pickup_city,
       pickup_address: parsedData.pickup_address,
       destination_city: parsedData.destination_city,
@@ -166,49 +209,87 @@ export default function ShipmentsPage() {
 
   const getStatusBadge = (status: ShipmentStatus) => {
     switch (status) {
+      case 'PENDING_DISPATCH':
       case 'PENDING_REVIEW':
       case 'PENDING':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 animate-pulse">
-            PENDING REVIEW
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-300 shadow-sm animate-pulse">
+            <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span>PENDING DISPATCH</span>
           </span>
         );
       case 'ACCEPTED':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800">
-            ACCEPTED
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-900 border border-purple-300 shadow-sm">
+            <Check className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+            <span>ACCEPTED</span>
           </span>
         );
       case 'ASSIGNED':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800">
-            ASSIGNED
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-900 border border-emerald-300 shadow-sm">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>ASSIGNED</span>
           </span>
         );
       case 'IN_TRANSIT':
+      case 'DISPATCHED':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-100 text-cyan-800">
-            IN TRANSIT
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-900 border border-blue-300 shadow-sm">
+            <Navigation className="w-3.5 h-3.5 text-blue-600 shrink-0 animate-spin" />
+            <span>IN TRANSIT</span>
           </span>
         );
       case 'DELIVERED':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
-            <CheckCircle2 className="w-3 h-3" />
-            DELIVERED
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-50 text-teal-900 border border-teal-300 shadow-sm">
+            <ShieldCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+            <span>DELIVERED (POD)</span>
           </span>
         );
       case 'REJECTED':
       case 'CANCELLED':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800">
-            {status}
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-900 border border-rose-300 shadow-sm">
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+            <span>{status}</span>
           </span>
         );
       default:
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">
-            {status}
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-300 shadow-sm">
+            <span>{status}</span>
+          </span>
+        );
+    }
+  };
+
+  const getPriorityBadge = (priority: ShipmentPriority) => {
+    switch (priority) {
+      case 'CRITICAL':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-sm animate-pulse">
+            <Zap className="w-3 h-3 fill-current text-amber-300" />
+            <span>CRITICAL SLA</span>
+          </span>
+        );
+      case 'HIGH':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500 text-white shadow-sm">
+            <span>HIGH</span>
+          </span>
+        );
+      case 'MEDIUM':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
+            <span>MEDIUM</span>
+          </span>
+        );
+      case 'LOW':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700">
+            <span>LOW</span>
           </span>
         );
     }
@@ -222,6 +303,17 @@ export default function ShipmentsPage() {
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">
+        {/* Toast */}
+        {successToast && (
+          <div className="fixed top-14 left-4 right-4 z-50 bg-slate-950 text-white border border-slate-700 p-3.5 rounded-2xl shadow-2xl text-xs font-bold flex items-center justify-between gap-3 animate-in fade-in max-w-lg mx-auto">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{successToast}</span>
+            </div>
+            <button onClick={() => setSuccessToast(null)} className="text-slate-400 hover:text-white">✕</button>
+          </div>
+        )}
+
         {/* KPI Cards & Tabs */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
           <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
@@ -290,6 +382,20 @@ export default function ShipmentsPage() {
               </button>
             </div>
 
+            {/* Autonomous Critical Auto-Dispatch Switch */}
+            <button
+              onClick={toggleAutoDispatch}
+              className={`px-3.5 py-2 text-xs font-black rounded-xl border transition flex items-center gap-2 shadow-sm ${
+                autoDispatchCritical
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-500 shadow-purple-200'
+                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+              }`}
+              title="When enabled, any Critical priority consignment is automatically assigned to the best vehicle & pilot without waiting for manual dispatcher approval"
+            >
+              <Zap className={`w-3.5 h-3.5 ${autoDispatchCritical ? 'text-amber-300 fill-current animate-bounce' : 'text-slate-400'}`} />
+              <span>⚡ Auto-Dispatch Critical: <strong className={autoDispatchCritical ? 'text-amber-300' : 'text-slate-800'}>{autoDispatchCritical ? 'ON (Active)' : 'OFF'}</strong></span>
+            </button>
+
             <Link
               href="/dispatcher/create-shipment"
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-card transition flex items-center gap-1.5"
@@ -357,7 +463,6 @@ export default function ShipmentsPage() {
                   </tr>
                 ) : (
                   filteredShipments.map((s) => {
-                    const isPending = s.status === 'PENDING_REVIEW' || s.status === 'PENDING' || s.status === 'PENDING_DISPATCH';
                     return (
                       <tr key={s.id} className="hover:bg-slate-50/60 transition group">
                         <td className="py-4 px-4">
@@ -405,15 +510,7 @@ export default function ShipmentsPage() {
 
                         <td className="py-4 px-4">
                           <div className="space-y-1">
-                            <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                              s.priority === 'CRITICAL'
-                                ? 'bg-rose-100 text-rose-800'
-                                : s.priority === 'HIGH'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-slate-100 text-slate-700'
-                            }`}>
-                              {s.priority}
-                            </span>
+                            {getPriorityBadge(s.priority)}
                             <span className="text-[10px] text-slate-500 font-medium block">
                               By {new Date(s.delivery_deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
@@ -436,13 +533,30 @@ export default function ShipmentsPage() {
                               Review Details
                             </button>
 
+                            {/* Autonomous Instant Auto-Assign button for unassigned Critical shipments */}
+                            {s.priority === 'CRITICAL' && !s.assigned_lorry_id && (
+                              <button
+                                onClick={() => {
+                                  const assigned = fleetMindStore.tryAutoDispatchShipment(s.id);
+                                  if (assigned) {
+                                    setSuccessToast(`⚡ Emergency Load ${s.shipment_code} Auto-Assigned to ${assigned.assigned_lorry_code}!`);
+                                    setTimeout(() => setSuccessToast(null), 3500);
+                                  }
+                                }}
+                                className="px-3 py-1.5 bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-700 hover:to-purple-700 text-white font-black rounded-xl shadow-md transition text-[11px] flex items-center gap-1.5 animate-pulse shrink-0"
+                              >
+                                <Zap className="w-3.5 h-3.5 fill-current text-amber-300" />
+                                <span>Auto-Assign</span>
+                              </button>
+                            )}
+
                             {!s.assigned_lorry_id ? (
                               <button
                                 onClick={() => setAssignShipment(s)}
                                 className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black rounded-xl shadow-sm transition text-[11px] flex items-center gap-1.5"
                               >
                                 <Truck className="w-3.5 h-3.5" />
-                                Assign Vehicle
+                                <span>Assign Vehicle</span>
                               </button>
                             ) : (
                               <button
@@ -450,7 +564,7 @@ export default function ShipmentsPage() {
                                 className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-black rounded-xl transition text-[11px] flex items-center gap-1"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                {s.assigned_lorry_code || 'Assigned'} (Re-assign)
+                                <span>{s.assigned_lorry_code || 'Assigned'} (Re-assign)</span>
                               </button>
                             )}
 
@@ -582,12 +696,13 @@ export default function ShipmentsPage() {
                   </div>
                 </div>
 
-                {/* SECTION 4: Cargo Specifications */}
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                {/* SECTION 4: Cargo Specifications & Capacity Bar Chart */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4">
                   <div className="flex items-center gap-2 text-slate-900 font-black uppercase text-[11px] tracking-wider">
                     <Layers className="w-4 h-4 text-purple-600" />
-                    Section 4: Cargo Specifications & Load Dynamics
+                    Section 4: Cargo Specifications & Capacity Load Analytics
                   </div>
+
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-white p-3 rounded-xl border border-slate-200">
                       <span className="text-[10px] text-slate-400 font-bold uppercase block">Weight</span>
@@ -606,6 +721,52 @@ export default function ShipmentsPage() {
                       <strong className="text-sm font-bold text-slate-900">{reviewShipment.package_count || 10} Units</strong>
                     </div>
                   </div>
+
+                  {/* Visual Payload & Volume Capacity Bar Chart */}
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black uppercase text-slate-800 flex items-center gap-1.5">
+                        <BarChart3 className="w-4 h-4 text-blue-600" />
+                        Lorry Capacity & Loading Utilization Bar Chart
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400">10,000 kg Standard Fleet Limit</span>
+                    </div>
+
+                    {/* Weight Bar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs font-bold">
+                        <span className="text-slate-600">Payload Weight: <strong className="text-slate-900">{reviewShipment.weight_kg.toLocaleString()} kg</strong></span>
+                        <span className="text-blue-600 font-mono">{Math.min(100, Math.round((reviewShipment.weight_kg / 10000) * 100))}% of 10,000 kg Lorry Limit</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden p-0.5">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            reviewShipment.weight_kg > 10000
+                              ? 'bg-rose-500'
+                              : reviewShipment.weight_kg > 7500
+                              ? 'bg-amber-500'
+                              : 'bg-gradient-to-r from-blue-500 to-indigo-600'
+                          }`}
+                          style={{ width: `${Math.min(100, Math.max(5, (reviewShipment.weight_kg / 10000) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Volume Bar */}
+                    <div className="space-y-1 pt-0.5">
+                      <div className="flex justify-between text-xs font-bold">
+                        <span className="text-slate-600">Cargo Volume: <strong className="text-slate-900">{reviewShipment.volume_m3} m³</strong></span>
+                        <span className="text-purple-600 font-mono">{Math.min(100, Math.round((reviewShipment.volume_m3 / 32) * 100))}% of 32 m³ Cargo Bay</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden p-0.5">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.max(5, (reviewShipment.volume_m3 / 32) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   {reviewShipment.fragile && (
                     <div className="bg-amber-50 text-amber-800 p-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 text-amber-600" />
@@ -760,7 +921,7 @@ export default function ShipmentsPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleAssignLorry} className="flex-1 flex flex-col overflow-hidden">
+              <form onSubmit={handleManualAssign} className="flex-1 flex flex-col overflow-hidden">
                 <div className="p-6 overflow-y-auto space-y-4 flex-1">
                   <div className="text-xs font-bold text-slate-600 flex items-center justify-between">
                     <span>Ranked by Capacity, Fuel Efficiency, Driver Availability, and Proximity:</span>
@@ -955,7 +1116,7 @@ export default function ShipmentsPage() {
 
               <div className="flex justify-end">
                 <button
-                  onClick={handleParseWithAI}
+                  onClick={handleAiParse}
                   disabled={isAiParsing}
                   className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs rounded-xl transition flex items-center gap-2"
                 >
@@ -976,7 +1137,7 @@ export default function ShipmentsPage() {
                   </div>
 
                   <button
-                    onClick={handleConfirmAiShipment}
+                    onClick={handleAiConfirm}
                     className="w-full py-2 bg-violet-600 hover:bg-violet-700 text-white font-black text-xs rounded-xl transition"
                   >
                     Submit Consignment to Intake Pool

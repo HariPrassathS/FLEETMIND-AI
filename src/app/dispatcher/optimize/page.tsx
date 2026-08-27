@@ -36,8 +36,14 @@ export default function OptimizePage() {
   const lorries = fleetMindStore.getLorries();
   const drivers = fleetMindStore.getDrivers();
   const settings = fleetMindStore.getSystemSettings();
-
-  const pendingCount = shipments.filter((s) => s.status === 'PENDING' || s.status === 'UNASSIGNED').length;
+  const pendingCount = shipments.filter(
+    (s) =>
+      s.status === 'PENDING' ||
+      s.status === 'UNASSIGNED' ||
+      s.status === 'PENDING_DISPATCH' ||
+      s.status === 'PENDING_REVIEW' ||
+      !s.assigned_lorry_id
+  ).length;
 
   const PIPELINE_STEPS = [
     '1. Loading Pending Consignments...',

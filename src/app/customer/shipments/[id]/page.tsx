@@ -43,6 +43,9 @@ import {
   ArrowRight,
   Radio,
   Compass,
+  BarChart3,
+  QrCode,
+  Zap,
 } from 'lucide-react';
 
 const LiveTrackingMapbox = dynamic(
@@ -417,13 +420,19 @@ export default function CustomerTrackingPage() {
           </div>
         </div>
 
-        {/* Card 3: Cargo Dynamics & Handling */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-6 space-y-3">
-          <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-            <Package className="w-4 h-4 text-purple-600" />
-            3. Cargo Specifications & Handling
-          </h3>
-          <div className="grid grid-cols-3 gap-2.5 text-xs pt-1">
+        {/* Card 3: Cargo Dynamics, Capacity Bar Chart & Digital Barcode */}
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <Package className="w-4 h-4 text-purple-600" />
+              3. Cargo Specifications & Capacity Analytics
+            </h3>
+            <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
+              {shipment.category}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2.5 text-xs">
             <div className="bg-purple-50/70 p-3 rounded-2xl border border-purple-100 text-center">
               <span className="text-[10px] text-purple-700 font-bold uppercase block">Cargo Weight</span>
               <strong className="text-purple-950 text-base font-black">{shipment.weight_kg.toLocaleString()} kg</strong>
@@ -438,11 +447,68 @@ export default function CustomerTrackingPage() {
             </div>
           </div>
 
-          <div className="space-y-2 pt-1 text-xs">
-            <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-              <span className="font-bold text-slate-700">Category & Handling:</span>
-              <span className="font-black text-slate-900 uppercase">{shipment.category}</span>
+          {/* Visual Payload & Volume Capacity Bar Chart */}
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black uppercase text-slate-800 flex items-center gap-1.5">
+                <BarChart3 className="w-4 h-4 text-blue-600" />
+                Carrier Loading & Capacity Utilization
+              </span>
+              <span className="text-[10px] font-bold text-slate-400">Standard 10-Tonne Limit</span>
             </div>
+
+            {/* Weight Bar */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs font-bold">
+                <span className="text-slate-600">Payload Weight: <strong className="text-slate-900">{shipment.weight_kg.toLocaleString()} kg</strong></span>
+                <span className="text-blue-600 font-mono">{Math.min(100, Math.round((shipment.weight_kg / 10000) * 100))}% of 10,000 kg Lorry Limit</span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden p-0.5">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    shipment.weight_kg > 10000
+                      ? 'bg-rose-500'
+                      : shipment.weight_kg > 7500
+                      ? 'bg-amber-500'
+                      : 'bg-gradient-to-r from-blue-500 to-indigo-600'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(5, (shipment.weight_kg / 10000) * 100))}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Volume Bar */}
+            <div className="space-y-1 pt-0.5">
+              <div className="flex justify-between text-xs font-bold">
+                <span className="text-slate-600">Cargo Volume: <strong className="text-slate-900">{shipment.volume_m3} m³</strong></span>
+                <span className="text-purple-600 font-mono">{Math.min(100, Math.round((shipment.volume_m3 / 32) * 100))}% of 32 m³ Cargo Bay</span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden p-0.5">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(5, (shipment.volume_m3 / 32) * 100))}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Digital Consignment Barcode & Scan Pass */}
+          <div className="bg-slate-900 p-3.5 rounded-2xl text-white flex items-center justify-between shadow-sm">
+            <div className="space-y-1">
+              <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
+                <QrCode className="w-3 h-3 text-blue-400" /> Digital Waybill Scan Pass
+              </span>
+              <div className="font-mono text-lg font-bold tracking-[0.25em] text-blue-200">
+                ||| | |||| | ||||| ||| || ||||
+              </div>
+              <span className="text-[10px] font-mono text-slate-300 block">{shipment.shipment_code}</span>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center font-mono text-[9px] text-center border border-white/10 font-bold p-1">
+              SCAN POD
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-1 text-xs">
             {shipment.special_instructions && (
               <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs">
                 <strong>Special Instructions:</strong> {shipment.special_instructions}

@@ -23,6 +23,7 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   operating_cost_per_km: 3.2,
   fixed_dispatch_cost_per_lorry: 800.0,
   auto_dispatch_high_priority: false,
+  auto_dispatch_critical: true,
   route_deviation_threshold_km: 1.5,
   weight_fuel_cost: 0.35,
   weight_distance: 0.2,
@@ -49,44 +50,54 @@ function computeBaselineMetrics(
   let totalFuel = 0;
   let totalCost = 0;
   let lateCount = 0;
+  let totalWeightAssigned = 0;
+  let totalLorryCapacity = 0;
 
-  const avgEfficiency = lorries.length > 0
-    ? lorries.reduce((s, l) => s + l.fuel_efficiency_km_per_l, 0) / lorries.length
-    : 7.5;
+  shipments.forEach((s, idx) => {
+    const lorry = lorries[idx % Math.max(1, lorries.length)] || lorries[0];
+    const dist = calculateHaversineDistanceKm(
+      s.pickup_lat,
+      s.pickup_lng,
+      s.destination_lat,
+      s.destination_lng,
+      settings.road_distance_factor
+    );
 
-  shipments.forEach((s) => {
-    // Direct point-to-point without 2-opt or consolidation
-    const dist = calculateHaversineDistanceKm(s.pickup_lat, s.pickup_lng, s.destination_lat, s.destination_lng, 1.4);
-    const tripCost = calculateTripCost(dist, avgEfficiency, settings);
-    
+    const tripCost = calculateTripCost(
+      dist,
+      lorry?.fuel_efficiency_km_per_l || 4.2,
+      settings
+    );
+
     totalDistance += dist;
     totalFuel += tripCost.fuel_liters;
     totalCost += tripCost.total_cost_inr;
+    totalWeightAssigned += s.weight_kg;
+    totalLorryCapacity += lorry?.max_weight_kg || 10000;
 
-    // Check if direct trip would be late
-    const travelHours = dist / (settings.average_speed_km_per_h * 0.85); // slower baseline
-    const eta = new Date(Date.now() + travelHours * 3600 * 1000 + 60 * 60 * 1000);
-    if (eta > new Date(s.delivery_deadline)) {
-      lateCount++;
-    }
+    // Check SLA
+    const estHours = dist / settings.average_speed_km_per_h + 1.0;
+    const deadlineHours = Math.max(0.5, (new Date(s.delivery_deadline).getTime() - Date.now()) / (1000 * 3600));
+    if (estHours > deadlineHours) lateCount++;
   });
 
-  const lorriesUsed = Math.min(shipments.length, Math.max(1, lorries.length));
-  const avgUtilization = shipments.length > 0 ? 42.5 : 0; // baseline low utilization
+  const utilizedLorries = Math.min(shipments.length, lorries.length || 1);
+  const onTimePct = shipments.length > 0 ? ((shipments.length - lateCount) / shipments.length) * 100 : 100;
+  const avgUtilization = totalLorryCapacity > 0 ? (totalWeightAssigned / totalLorryCapacity) * 100 : 0;
 
   return {
-    total_lorries_used: lorriesUsed,
-    total_distance_km: Number(totalDistance.toFixed(2)),
-    total_fuel_liters: Number(totalFuel.toFixed(2)),
-    total_cost_inr: Number(totalCost.toFixed(2)),
+    total_lorries_used: utilizedLorries,
+    total_distance_km: Math.round(totalDistance),
+    total_fuel_liters: Math.round(totalFuel),
+    total_cost_inr: Math.round(totalCost),
     late_shipments_count: lateCount,
-    on_time_percentage: shipments.length > 0 ? Number((((shipments.length - lateCount) / shipments.length) * 100).toFixed(1)) : 100,
-    avg_capacity_utilization_pct: avgUtilization,
+    on_time_percentage: Number(onTimePct.toFixed(1)),
+    avg_capacity_utilization_pct: Number(avgUtilization.toFixed(1)),
   };
 }
 
 /**
- * Executes the complete 15-Step Fleet Optimization Pipeline in Pure TypeScript.
+ * Executes the Fleet Optimization Pipeline.
  */
 export function runFleetOptimization(
   shipments: Shipment[],
@@ -100,18 +111,26 @@ export function runFleetOptimization(
 
   // Step 1: Filter Pending & Unassigned Shipments
   const pendingShipments = shipments.filter(
-    (s) => s.status === 'PENDING' || s.status === 'UNASSIGNED'
+    (s) =>
+      s.status === 'PENDING' ||
+      s.status === 'UNASSIGNED' ||
+      s.status === 'PENDING_DISPATCH' ||
+      s.status === 'PENDING_REVIEW' ||
+      !s.assigned_lorry_id
   );
-  stepsCompleted.push('Step 1: Loaded pending shipments');
+  stepsCompleted.push(`Step 1: Loaded ${pendingShipments.length} pending consignments for optimization`);
 
   // Step 2 & 3: Filter Available Lorries & Drivers
-  const availableLorries = lorries.filter(
-    (l) => l.status === 'AVAILABLE' || l.status === 'LOADING'
+  let availableLorries = lorries.filter(
+    (l) => l.status === 'AVAILABLE' || l.status === 'LOADING' || l.status === 'MAINTENANCE' || l.status === 'ON_ROUTE'
   );
-  const availableDrivers = drivers.filter(
+  if (availableLorries.length === 0) availableLorries = [...lorries];
+
+  let availableDrivers = drivers.filter(
     (d) => d.availability_status === 'AVAILABLE' || d.availability_status === 'ON_DUTY'
   );
-  stepsCompleted.push('Step 2 & 3: Loaded available fleet resources');
+  if (availableDrivers.length === 0) availableDrivers = [...drivers];
+  stepsCompleted.push(`Step 2 & 3: Loaded ${availableLorries.length} candidate fleet vehicles & ${availableDrivers.length} pilots`);
 
   // Compute Baseline Metrics
   const beforeMetrics = computeBaselineMetrics(pendingShipments, availableLorries, settings);

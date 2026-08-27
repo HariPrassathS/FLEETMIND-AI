@@ -329,6 +329,7 @@ export interface SystemSettings {
   operating_cost_per_km: number; // e.g. 3.00 INR (tire, maintenance, lubricant)
   fixed_dispatch_cost_per_lorry: number; // e.g. 800.00 INR
   auto_dispatch_high_priority: boolean; // Auto dispatch when criteria satisfied
+  auto_dispatch_critical?: boolean; // Autonomous instant assignment for critical priority
   route_deviation_threshold_km: number; // e.g. 1.5 km
   weight_fuel_cost: number; // Weight in optimization scoring (0-1)
   weight_distance: number;

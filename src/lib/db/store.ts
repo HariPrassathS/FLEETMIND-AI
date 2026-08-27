@@ -2047,42 +2047,7 @@ class FleetMindStore {
     return this.routes.find((r) => r.id === id || r.route_code === id);
   }
 
-  public applyOptimizationResult(result: OptimizationResult) {
-    this.optimizationRuns.unshift(result);
-    
-    // Save assignments as active routes
-    result.assignments.forEach((assignment) => {
-      this.routes.push(assignment.route);
 
-      // Update lorry status to ON_ROUTE
-      const lorry = this.lorries.find((l) => l.id === assignment.lorry_id);
-      if (lorry) {
-        lorry.status = 'ON_ROUTE';
-      }
-
-      // Update driver status
-      const driver = this.drivers.find((d) => d.id === assignment.driver_id);
-      if (driver) {
-        driver.availability_status = 'ON_DUTY';
-      }
-
-      // Update shipments to ASSIGNED
-      assignment.shipment_ids.forEach((sid) => {
-        const shipment = this.shipments.find((s) => s.id === sid);
-        if (shipment) {
-          shipment.status = 'ASSIGNED';
-          shipment.assigned_lorry_id = assignment.lorry_id;
-          shipment.assigned_route_id = assignment.route.id;
-        }
-      });
-    });
-
-    this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'OPTIMIZATION_APPLIED', 'OPTIMIZATION_RUN', result.run_id, null, {
-      assignments_count: result.assignments.length,
-      savings_inr: result.savings.cost_inr,
-    });
-    this.notify('OPTIMIZATION_COMPLETED', result);
-  }
 
   // --- Driver Execution & Delivery Events ---
   public getDeliveryEvents(shipmentId?: string, routeId?: string): DeliveryEvent[] {
@@ -2567,6 +2532,51 @@ class FleetMindStore {
       this.optimizationRuns = [...SEED_OPTIMIZATION_RUNS];
     }
     return [...this.optimizationRuns];
+  }
+
+  public applyOptimizationResult(result: OptimizationResult) {
+    if (!result || !result.assignments) return;
+
+    // Record the run into optimization runs
+    this.recordOptimizationRun(result);
+
+    result.assignments.forEach((assignment) => {
+      const lorry = this.getLorryById(assignment.lorry_id) || this.lorries.find(l => l.lorry_code === assignment.lorry_code);
+      const driver = assignment.driver_id ? this.getDriverById(assignment.driver_id) : (lorry?.driver_id ? this.getDriverById(lorry.driver_id) : undefined);
+
+      if (lorry) {
+        // Assign driver to lorry if not already
+        if (driver && (!lorry.driver_id || lorry.driver_id !== driver.id)) {
+          this.assignDriverToLorry(driver.id, lorry.id);
+        }
+
+        // Assign each shipment in the optimization assignment
+        assignment.shipment_ids.forEach((sId) => {
+          this.assignLorryAndDriver(sId, lorry.id, driver?.id);
+        });
+
+        // Add or update the Route
+        if (assignment.route) {
+          const routeIdx = this.routes.findIndex((r) => r.id === assignment.route.id || r.lorry_id === lorry.id);
+          if (routeIdx >= 0) {
+            this.routes[routeIdx] = { ...this.routes[routeIdx], ...assignment.route, status: 'ASSIGNED', updated_at: new Date().toISOString() };
+          } else {
+            this.routes.unshift({ ...assignment.route, status: 'ASSIGNED' });
+          }
+        }
+      }
+    });
+
+    this.saveToLocalStorage();
+    this.createNotification({
+      user_id: 'dispatcher@fleetmind.ai',
+      title: `⚡ Fleet Optimization Plan Applied: ${result.run_id}`,
+      message: `Successfully allocated ${result.assignments.reduce((sum, a) => sum + a.shipment_ids.length, 0)} consignments across ${result.after_metrics.total_lorries_used} lorries. ₹${result.savings.cost_inr.toLocaleString()} cost savings applied.`,
+      severity: 'HIGH',
+      type: 'OPTIMIZATION_COMPLETE',
+    });
+
+    this.notify('OPTIMIZATION_APPLIED', result);
   }
 
   public recordOptimizationRun(run: OptimizationResult) {

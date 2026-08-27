@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { LngLat, RouteLeg, RouteResult } from '../../../../lib/routing/types';
 import { buildFallbackRoute } from '../../../../lib/routing/routing-service';
+import { fetchGeoapifyRoute } from '../../../../lib/routing/geoapify';
 
 const MAPBOX_TOKEN =
   process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
@@ -35,6 +36,16 @@ export async function POST(req: NextRequest) {
     }
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  // Try 1: Geoapify Turn-by-Turn Real Routing
+  try {
+    const geoapifyRoute = await fetchGeoapifyRoute(origin, destination, waypoints);
+    if (geoapifyRoute && geoapifyRoute.geometry && geoapifyRoute.geometry.length > 0) {
+      return NextResponse.json(geoapifyRoute);
+    }
+  } catch (err) {
+    console.warn('[/api/routing/directions] Geoapify failed, attempting OSRM / Mapbox...');
   }
 
   // 2. Build Coordinates string: lng,lat;lng,lat;...

@@ -1345,6 +1345,78 @@ class FleetMindStore {
       });
     }
 
+    // Create or update Active Dispatch Route
+    let existingRoute = this.routes.find((r) => r.lorry_id === lorry.id && r.status !== 'COMPLETED' && r.status !== 'CANCELLED');
+    if (!existingRoute) {
+      existingRoute = {
+        id: `RT-${lorry.lorry_code}-${Date.now().toString(36).toUpperCase()}`,
+        route_code: `ROUTE-${lorry.lorry_code}`,
+        lorry_id: lorry.id,
+        lorry_code: lorry.lorry_code,
+        driver_id: driver?.id || 'driver-01',
+        driver_name: driver?.name || 'Assigned Pilot',
+        status: 'ASSIGNED',
+        stops: [],
+        total_distance_km: 0,
+        estimated_duration_minutes: 0,
+        fuel_consumption_liters: 0,
+        estimated_cost: 0,
+        shipment_ids: [],
+        total_weight_kg: 0,
+        total_volume_m3: 0,
+        weight_utilization_pct: 0,
+        volume_utilization_pct: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      this.routes.unshift(existingRoute);
+    }
+
+    if (!existingRoute.shipment_ids.includes(shipment.id)) {
+      existingRoute.shipment_ids.push(shipment.id);
+
+      // Add Pickup Stop
+      existingRoute.stops.push({
+        id: `stop-pu-${shipment.id}`,
+        route_id: existingRoute.id,
+        shipment_id: shipment.id,
+        stop_sequence: existingRoute.stops.length + 1,
+        stop_type: 'PICKUP',
+        latitude: shipment.pickup_lat || 13.0827,
+        longitude: shipment.pickup_lng || 80.2707,
+        address: shipment.pickup_address || `${shipment.pickup_city} Logistics Park`,
+        arrival_eta: new Date(Date.now() + 3600000).toISOString(),
+        deadline: new Date(Date.now() + 5400000).toISOString(),
+        status: 'PENDING',
+      });
+
+      // Add Delivery Stop
+      existingRoute.stops.push({
+        id: `stop-del-${shipment.id}`,
+        route_id: existingRoute.id,
+        shipment_id: shipment.id,
+        stop_sequence: existingRoute.stops.length + 1,
+        stop_type: 'DELIVERY',
+        latitude: shipment.destination_lat || 12.9716,
+        longitude: shipment.destination_lng || 77.5946,
+        address: shipment.destination_address || `${shipment.destination_city} Freight Terminal`,
+        arrival_eta: shipment.delivery_deadline || new Date(Date.now() + 86400000).toISOString(),
+        deadline: shipment.delivery_deadline || new Date(Date.now() + 86400000).toISOString(),
+        status: 'PENDING',
+      });
+
+      existingRoute.total_distance_km = Number((existingRoute.total_distance_km + 320).toFixed(1));
+      existingRoute.estimated_duration_minutes = Number((existingRoute.estimated_duration_minutes + 360).toFixed(1));
+      existingRoute.fuel_consumption_liters = Number((existingRoute.total_distance_km / lorry.fuel_efficiency_km_per_l).toFixed(1));
+      existingRoute.estimated_cost = Math.round(existingRoute.fuel_consumption_liters * 94.5 + existingRoute.stops.length * 600);
+      existingRoute.total_weight_kg += shipment.weight_kg;
+      existingRoute.total_volume_m3 += shipment.volume_m3;
+      existingRoute.weight_utilization_pct = Math.min(100, Math.round((existingRoute.total_weight_kg / lorry.max_weight_kg) * 100));
+      existingRoute.volume_utilization_pct = Math.min(100, Math.round((existingRoute.total_volume_m3 / lorry.max_volume_m3) * 100));
+      existingRoute.updated_at = new Date().toISOString();
+      shipment.assigned_route_id = existingRoute.id;
+    }
+
     // Customer Notification
     this.createNotification({
       user_id: shipment.customer_email || 'customer@fleetmind.ai',
@@ -1697,6 +1769,83 @@ class FleetMindStore {
 
   // --- Route Operations ---
   public getRoutes(): Route[] {
+    // If routes exist, return them
+    if (this.routes.length > 0) {
+      return [...this.routes];
+    }
+
+    // Synthesize active routes from any assigned / in-transit shipments
+    const assignedShipments = this.shipments.filter(
+      (s) =>
+        Boolean(s.assigned_lorry_id || s.assigned_lorry_code) &&
+        (s.status === 'ASSIGNED' || s.status === 'IN_TRANSIT' || s.status === 'PICKED_UP')
+    );
+
+    if (assignedShipments.length > 0) {
+      const lorryGroups = new Map<string, Shipment[]>();
+      assignedShipments.forEach((s) => {
+        const key = s.assigned_lorry_code || s.assigned_lorry_id || 'L-01';
+        if (!lorryGroups.has(key)) lorryGroups.set(key, []);
+        lorryGroups.get(key)!.push(s);
+      });
+
+      lorryGroups.forEach((shps, lorryCode) => {
+        const lorry = this.lorries.find((l) => l.lorry_code === lorryCode || l.id === lorryCode) || this.lorries[0];
+        const driver = this.drivers.find((d) => d.id === shps[0].assigned_driver_id || d.name === shps[0].assigned_driver_name) || this.drivers[0];
+
+        const synthesizedRoute: Route = {
+          id: `RT-${lorry?.lorry_code || 'L-01'}-${Date.now().toString(36).toUpperCase()}`,
+          route_code: `ROUTE-${lorry?.lorry_code || 'L-01'}`,
+          lorry_id: lorry?.id || '00000000-0000-4000-8000-000000000001',
+          lorry_code: lorry?.lorry_code || 'L-01',
+          driver_id: driver?.id || 'driver-01',
+          driver_name: driver?.name || 'Murugan Selvam',
+          status: 'ASSIGNED',
+          stops: shps.flatMap((s, idx) => [
+            {
+              id: `stop-pu-${s.id}`,
+              route_id: `RT-${lorry?.lorry_code || 'L-01'}`,
+              shipment_id: s.id,
+              stop_sequence: idx * 2 + 1,
+              stop_type: 'PICKUP',
+              latitude: s.pickup_lat || 13.0827,
+              longitude: s.pickup_lng || 80.2707,
+              address: s.pickup_address || `${s.pickup_city} Logistics Park`,
+              arrival_eta: new Date(Date.now() + 3600000).toISOString(),
+              deadline: new Date(Date.now() + 5400000).toISOString(),
+              status: s.status === 'PICKED_UP' || s.status === 'IN_TRANSIT' ? 'COMPLETED' : 'PENDING',
+            },
+            {
+              id: `stop-del-${s.id}`,
+              route_id: `RT-${lorry?.lorry_code || 'L-01'}`,
+              shipment_id: s.id,
+              stop_sequence: idx * 2 + 2,
+              stop_type: 'DELIVERY',
+              latitude: s.destination_lat || 12.9716,
+              longitude: s.destination_lng || 77.5946,
+              address: s.destination_address || `${s.destination_city} Freight Terminal`,
+              arrival_eta: s.delivery_deadline || new Date(Date.now() + 86400000).toISOString(),
+              deadline: s.delivery_deadline || new Date(Date.now() + 86400000).toISOString(),
+              status: s.status === 'DELIVERED' ? 'COMPLETED' : 'PENDING',
+            },
+          ]),
+          total_distance_km: Number((shps.length * 320).toFixed(1)),
+          estimated_duration_minutes: Number((shps.length * 360).toFixed(1)),
+          fuel_consumption_liters: Number(((shps.length * 320) / (lorry?.fuel_efficiency_km_per_l || 4.8)).toFixed(1)),
+          estimated_cost: Math.round(((shps.length * 320) / (lorry?.fuel_efficiency_km_per_l || 4.8)) * 94.5 + shps.length * 1200),
+          shipment_ids: shps.map((s) => s.id),
+          total_weight_kg: shps.reduce((acc, x) => acc + (x.weight_kg || 0), 0),
+          total_volume_m3: shps.reduce((acc, x) => acc + (x.volume_m3 || 0), 0),
+          weight_utilization_pct: Math.min(100, Math.round((shps.reduce((acc, x) => acc + (x.weight_kg || 0), 0) / (lorry?.max_weight_kg || 10000)) * 100)),
+          volume_utilization_pct: Math.min(100, Math.round((shps.reduce((acc, x) => acc + (x.volume_m3 || 0), 0) / (lorry?.max_volume_m3 || 35)) * 100)),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        this.routes.push(synthesizedRoute);
+      });
+    }
+
     return [...this.routes];
   }
 

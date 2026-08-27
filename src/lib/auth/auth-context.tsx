@@ -177,17 +177,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fbUid = userCred.user.uid;
         fbPhoto = userCred.user.photoURL || undefined;
       } catch (fbErr: any) {
-        // If user not in Firebase yet, auto-create in Firebase Auth for seamless sync
-        if (fbErr.code === 'auth/user-not-found' || fbErr.code === 'auth/invalid-credential') {
+        if (fbErr.code === 'auth/wrong-password') {
+          throw new Error('Incorrect password. Please enter the exact password assigned for this driver.');
+        } else if (fbErr.code === 'auth/user-not-found') {
+          // If brand new user trying to register via login
           try {
             const created = await createUserWithEmailAndPassword(auth, email, pass);
             fbUid = created.user.uid;
             fbPhoto = created.user.photoURL || undefined;
-          } catch (createErr) {
-            console.info('Firebase auth fallback to local credentials:', email);
+          } catch (createErr: any) {
+            if (createErr.code === 'auth/email-already-in-use') {
+              throw new Error('Incorrect password. Please enter the correct password for this account.');
+            }
+            throw new Error(createErr.message || 'Authentication failed.');
           }
+        } else if (fbErr.code === 'auth/invalid-credential') {
+          // Firebase modern auth error code for invalid credentials
+          try {
+            const created = await createUserWithEmailAndPassword(auth, email, pass);
+            fbUid = created.user.uid;
+            fbPhoto = created.user.photoURL || undefined;
+          } catch (createErr: any) {
+            if (createErr.code === 'auth/email-already-in-use') {
+              throw new Error('Incorrect password. Please enter the correct password set during registration.');
+            }
+            throw new Error('Invalid email or password.');
+          }
+        } else if (fbErr.code === 'auth/too-many-requests') {
+          throw new Error('Too many failed login attempts. Please wait a moment and try again.');
+        } else if (fbErr.code === 'auth/user-disabled') {
+          throw new Error('This driver account has been deactivated. Please contact dispatch.');
         } else {
-          console.info('Local authentication verification applied:', email);
+          throw new Error(fbErr.message || 'Authentication failed. Please verify your credentials.');
         }
       }
 

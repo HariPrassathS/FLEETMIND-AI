@@ -205,18 +205,18 @@ export const SEED_AUDIT_LOGS: AuditLog[] = [
 
 // In-memory Database Store with Observer Pattern for Real-time reactivity
 class FleetMindStore {
-  private users: UserProfile[] = [...SEED_USERS];
-  private customers: any[] = [...SEED_CUSTOMERS];
-  private lorries: Lorry[] = [...SEED_LORRIES];
-  private drivers: Driver[] = [...SEED_DRIVERS];
-  private shipments: Shipment[] = [...SEED_SHIPMENTS];
+  private users: UserProfile[] = [];
+  private customers: any[] = [];
+  private lorries: Lorry[] = [];
+  private drivers: Driver[] = [];
+  private shipments: Shipment[] = [];
   private routes: Route[] = [];
   private deliveryEvents: DeliveryEvent[] = [];
   private deliveryVerifications: any[] = [];
   private notifications: NotificationItem[] = [];
   private supportTickets: any[] = [];
-  private alerts: SystemAlert[] = [...SEED_ALERTS];
-  private auditLogs: AuditLog[] = [...SEED_AUDIT_LOGS];
+  private alerts: SystemAlert[] = [];
+  private auditLogs: AuditLog[] = [];
   private systemSettings: SystemSettings = { ...SEED_SYSTEM_SETTINGS };
   private optimizationRuns: OptimizationResult[] = [];
   private simulationRuns: SimulationResult[] = [];
@@ -231,17 +231,15 @@ class FleetMindStore {
   private listeners: Set<(event: string, data?: any) => void> = new Set();
 
   constructor() {
-    this.initDefaultRoutes();
-    this.initDefaultCustomerData();
-    this.initDefaultFleetManagementData();
+    // Clean initial state for live operations
   }
 
   public resetDemoData() {
-    this.users = [...SEED_USERS];
-    this.shipments = [...SEED_SHIPMENTS];
-    this.lorries = [...SEED_LORRIES];
-    this.drivers = [...SEED_DRIVERS];
-    this.customers = [...SEED_CUSTOMERS];
+    this.users = [];
+    this.shipments = [];
+    this.lorries = [];
+    this.drivers = [];
+    this.customers = [];
     this.routes = [];
     this.deliveryEvents = [];
     this.notifications = [];
@@ -254,9 +252,9 @@ class FleetMindStore {
     this.vehicleDocuments = [];
     this.driverDocuments = [];
     this.breakdownRecords = [];
-    this.initDefaultRoutes();
-    this.initDefaultCustomerData();
-    this.initDefaultFleetManagementData();
+    this.cargoTransfers = [];
+    this.alerts = [];
+    this.auditLogs = [];
     this.notify('RESET_DATA');
   }
 

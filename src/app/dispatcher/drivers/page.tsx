@@ -33,6 +33,8 @@ export default function DispatcherDriversPage() {
 
   const [form, setForm] = useState({
     name: '',
+    email: '',
+    password: '',
     phone: '+91 98400 ',
     license_number: 'TN01-201500',
     shift_start: '06:00',
@@ -51,8 +53,11 @@ export default function DispatcherDriversPage() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
+    const driverEmail = form.email.trim() || `driver.${form.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@fleetmind.ai`;
     fleetMindStore.createDriver({
       name: form.name,
+      email: driverEmail,
+      password: form.password || 'Driver@123',
       phone: form.phone,
       license_number: form.license_number,
       shift_start: form.shift_start,
@@ -60,6 +65,16 @@ export default function DispatcherDriversPage() {
       availability_status: form.availability_status,
     });
     setIsAddModalOpen(false);
+    setForm({
+      name: '',
+      email: '',
+      password: '',
+      phone: '+91 98400 ',
+      license_number: 'TN01-201500',
+      shift_start: '06:00',
+      shift_end: '18:00',
+      availability_status: 'AVAILABLE' as DriverStatus,
+    });
   };
 
   const handleStatusChange = (driverId: string, newStatus: DriverStatus) => {
@@ -312,6 +327,32 @@ export default function DispatcherDriversPage() {
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold"
                     placeholder="e.g. S. Kumaravel"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 uppercase mb-1">Driver Login Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium"
+                      placeholder="e.g. driver.kumar@fleetmind.ai"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 uppercase mb-1">Account Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium"
+                      placeholder="Min. 6 chars (e.g. Driver@123)"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

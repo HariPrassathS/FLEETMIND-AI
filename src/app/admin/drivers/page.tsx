@@ -11,6 +11,8 @@ export default function AdminDriversPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [form, setForm] = useState({
     name: '',
+    email: '',
+    password: '',
     phone: '+91 ',
     license_number: '',
     shift_start: '06:00',
@@ -26,14 +28,26 @@ export default function AdminDriversPage() {
 
   const handleCreateDriver = (e: React.FormEvent) => {
     e.preventDefault();
+    const driverEmail = form.email.trim() || `driver.${form.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@fleetmind.ai`;
     fleetMindStore.createDriver({
       name: form.name,
+      email: driverEmail,
+      password: form.password || 'Driver@123',
       phone: form.phone,
       license_number: form.license_number,
       shift_start: form.shift_start,
       shift_end: form.shift_end,
     });
     setIsAddModalOpen(false);
+    setForm({
+      name: '',
+      email: '',
+      password: '',
+      phone: '+91 ',
+      license_number: '',
+      shift_start: '06:00',
+      shift_end: '18:00',
+    });
   };
 
   const handleStatusChange = (driverId: string, status: DriverStatus) => {
@@ -121,7 +135,7 @@ export default function AdminDriversPage() {
 
               <form onSubmit={handleCreateDriver} className="p-6 space-y-4 text-xs">
                 <div>
-                  <label className="block font-bold text-slate-700 uppercase mb-1">Full Name</label>
+                  <label className="block font-bold text-slate-700 uppercase mb-1">Full Legal Name</label>
                   <input
                     type="text"
                     required
@@ -132,27 +146,55 @@ export default function AdminDriversPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 uppercase mb-1">Phone Number</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="w-full p-2.5 rounded-lg border border-slate-200 font-medium"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 uppercase mb-1">Driver Login Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      placeholder="e.g. driver.raman@fleetmind.ai"
+                      className="w-full p-2.5 rounded-lg border border-slate-200 font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 uppercase mb-1">Account Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      placeholder="Min. 6 chars"
+                      className="w-full p-2.5 rounded-lg border border-slate-200 font-medium"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 uppercase mb-1">Commercial License #</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.license_number}
-                    onChange={(e) => setForm({ ...form, license_number: e.target.value })}
-                    placeholder="TN-01-2021-00999"
-                    className="w-full p-2.5 rounded-lg border border-slate-200 font-medium"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 uppercase mb-1">Phone Number</label>
+                    <input
+                      type="text"
+                      required
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      className="w-full p-2.5 rounded-lg border border-slate-200 font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 uppercase mb-1">Commercial License #</label>
+                    <input
+                      type="text"
+                      required
+                      value={form.license_number}
+                      onChange={(e) => setForm({ ...form, license_number: e.target.value })}
+                      placeholder="TN-01-2021-00999"
+                      className="w-full p-2.5 rounded-lg border border-slate-200 font-medium"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

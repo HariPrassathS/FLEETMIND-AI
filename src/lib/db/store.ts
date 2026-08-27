@@ -1323,9 +1323,39 @@ class FleetMindStore {
     return this.drivers.find((d) => d.id === id || d.user_id === id);
   }
 
-  public createDriver(driver: Partial<Driver> & { name: string; phone: string; license_number: string }): Driver {
+  public createDriver(driver: Partial<Driver> & { name: string; phone: string; license_number: string; email?: string; password?: string }): Driver {
+    const driverId = driver.id || `driver-${Date.now()}`;
+    const email = driver.email || `driver.${driver.name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'pilot'}@fleetmind.ai`;
+
+    // 1. Create Driver UserProfile so they can authenticate into the Driver Cockpit portal
+    let userProfile = this.getUserByEmail(email);
+    if (!userProfile) {
+      userProfile = this.createUser({
+        email,
+        full_name: driver.name,
+        phone: driver.phone,
+        role: 'DRIVER',
+        is_active: true,
+        is_verified: true,
+      });
+    }
+
+    // 2. Create Firebase Auth user in background if password provided
+    if (driver.password && typeof window !== 'undefined') {
+      import('../auth/firebase').then(({ auth }) => {
+        if (auth) {
+          import('firebase/auth').then(({ createUserWithEmailAndPassword }) => {
+            createUserWithEmailAndPassword(auth, email, driver.password!).catch((e) => {
+              console.info('Driver Firebase auth account notice:', e.message);
+            });
+          });
+        }
+      });
+    }
+
     const newDriver: Driver = {
-      id: driver.id || `driver-${Date.now()}`,
+      id: driverId,
+      user_id: userProfile.id,
       name: driver.name,
       phone: driver.phone,
       license_number: driver.license_number,

@@ -71,35 +71,49 @@ export default function DriverDashboardPage() {
 
   // Find current driver from the store
   const currentDriver = drivers.find(
-    (d) => d.email === user?.email || d.name === user?.full_name || d.id === user?.id
-  ) || drivers[0];
+    (d) => d.email === user?.email || (user?.email && d.email?.toLowerCase() === user.email.toLowerCase()) || (user?.full_name && d.name?.toLowerCase() === user.full_name.toLowerCase()) || d.id === user?.id
+  ) || null;
 
   // Find lorry assigned to this driver
-  const assignedLorry = lorries.find(
-    (l) => l.assigned_driver_id === currentDriver?.id || l.id === currentDriver?.assigned_lorry_id
-  ) || lorries.find((l) => l.id === routes[0]?.lorry_id) || lorries[0];
-
-  // Find active route for this driver
-  const activeRoute = routes.find((r) => r.driver_id === currentDriver?.id) || routes.find((r) => r.stops.length > 0) || routes[0];
-  const nextStop = activeRoute?.stops.find((s) => s.status !== 'COMPLETED') || activeRoute?.stops[0];
+  const assignedLorry = currentDriver
+    ? (lorries.find((l) => l.driver_id === currentDriver.id || l.assigned_driver_id === currentDriver.id || l.id === currentDriver.assigned_lorry_id) || null)
+    : (lorries.find((l) => l.assigned_driver_name === user?.full_name) || null);
 
   // Get shipments assigned to this driver
   const myShipments = shipments.filter(
-    (s) => s.assigned_driver_id === currentDriver?.id || s.assigned_driver_name === currentDriver?.name || s.assigned_lorry_id === assignedLorry?.id
+    (s) => (currentDriver && (s.assigned_driver_id === currentDriver.id || s.assigned_driver_name === currentDriver.name)) ||
+           (user?.full_name && s.assigned_driver_name?.toLowerCase() === user.full_name.toLowerCase()) ||
+           (assignedLorry && (s.assigned_lorry_id === assignedLorry.id || s.assigned_lorry_code === assignedLorry.lorry_code))
   );
-  const currentShipment = myShipments.find((s) => s.id === nextStop?.shipment_id) || myShipments.find((s) => s.status === 'IN_TRANSIT' || s.status === 'DISPATCHED') || myShipments[0] || shipments[0];
+
+  // Find active route or active shipment
+  const activeRoute = routes.find((r) => r.driver_id === currentDriver?.id) || null;
+  const currentShipment = myShipments.find((s) => s.status === 'IN_TRANSIT' || s.status === 'ASSIGNED' || s.status === 'PICKED_UP' || s.status === 'ACCEPTED') || myShipments[0] || null;
+
+  const isPickup = currentShipment ? (currentShipment.status === 'ASSIGNED' || currentShipment.status === 'ACCEPTED') : false;
+  const isDelivered = currentShipment ? (currentShipment.status === 'DELIVERED') : false;
+
+  const dynamicStop = currentShipment ? {
+    stop_type: isPickup ? 'PICKUP' : 'DELIVERY',
+    address: isPickup ? (currentShipment.pickup_address || `${currentShipment.pickup_city} Depot`) : (currentShipment.destination_address || `${currentShipment.destination_city} Consignee Dock`),
+    city: isPickup ? currentShipment.pickup_city : currentShipment.destination_city,
+    latitude: isPickup ? currentShipment.pickup_lat : currentShipment.destination_lat,
+    longitude: isPickup ? currentShipment.pickup_lng : currentShipment.destination_lng,
+    phone: isPickup ? currentShipment.sender_phone : currentShipment.receiver_phone,
+    deadline: currentShipment.delivery_deadline,
+  } : null;
 
   const handleDriverAction = (eventType: DeliveryEventType, notes?: string, recipient?: string) => {
-    if (!activeRoute || !nextStop) return;
+    if (!currentShipment) return;
 
     const actionData = {
-      shipment_id: nextStop.shipment_id,
-      route_id: activeRoute.id,
-      driver_id: user?.id || 'driver-01',
-      driver_name: user?.full_name || 'Murugan Selvam',
+      shipment_id: currentShipment.id,
+      route_id: activeRoute?.id || `RT-${currentShipment.shipment_code}`,
+      driver_id: user?.id || currentDriver?.id || 'driver-01',
+      driver_name: user?.full_name || currentDriver?.name || 'Driver',
       event_type: eventType,
-      latitude: nextStop.latitude,
-      longitude: nextStop.longitude,
+      latitude: dynamicStop?.latitude || 13.0827,
+      longitude: dynamicStop?.longitude || 80.2707,
       notes: notes || `Action ${eventType} triggered by driver`,
       recipient_name: recipient,
     };
@@ -228,121 +242,135 @@ export default function DriverDashboardPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-lg shadow-sm">
-              {user?.full_name?.charAt(0) || 'M'}
+              {user?.full_name?.charAt(0) || currentDriver?.name?.charAt(0) || 'D'}
             </div>
             <div>
               <span className="text-[10px] uppercase tracking-wider text-blue-200 font-bold block">
-                Active Route Cockpit
+                Active Driver Cockpit
               </span>
-              <h2 className="text-lg font-bold leading-tight">{user?.full_name || 'Murugan Selvam'}</h2>
-              <p className="text-xs text-blue-100">Vehicle: {assignedLorry?.lorry_code || 'L-11'} ({assignedLorry?.registration_number || 'TN-01-AB-4501'})</p>
+              <h2 className="text-lg font-bold leading-tight">{user?.full_name || currentDriver?.name || 'Driver'}</h2>
+              <p className="text-xs text-blue-100">
+                Vehicle: {assignedLorry ? `${assignedLorry.lorry_code} (${assignedLorry.registration_number})` : 'Vehicle Awaiting Assignment'}
+              </p>
             </div>
           </div>
-          <span className="px-2.5 py-1 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-black tracking-wider uppercase">
-            ON ROUTE
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase ${currentShipment ? 'bg-emerald-400 text-slate-950' : 'bg-slate-700 text-white'}`}>
+            {currentShipment ? (isPickup ? 'GOING TO PICKUP' : isDelivered ? 'DELIVERED' : 'IN TRANSIT') : 'STANDBY'}
           </span>
         </div>
 
         {/* Route Details Bar */}
         <div className="pt-3 border-t border-white/15 flex items-center justify-between text-xs text-blue-100 font-medium">
-          <span>Route: <strong className="text-white">{activeRoute?.route_code || 'RT-CHN-HOS-01'}</strong></span>
-          <span>{activeRoute?.total_distance_km || 310} km • {activeRoute?.stops?.length || 4} Stops</span>
+          <span>Route: <strong className="text-white">{currentShipment ? `${currentShipment.pickup_city} → ${currentShipment.destination_city}` : 'No Active Assignment'}</strong></span>
+          <span>{currentShipment ? `${currentShipment.weight_kg.toLocaleString()} kg • ${currentShipment.category}` : '0 kg Payload'}</span>
         </div>
       </div>
 
       {/* Real Mobile Driver GPS Broadcast Widget */}
       <DriverGpsTracker
-        driverId={user?.id || 'driver-01'}
-        driverName={user?.full_name || 'Murugan Selvam'}
-        lorryCode={assignedLorry?.lorry_code || 'L-11'}
-        shipmentId={currentShipment?.id || 'shipment-1042'}
+        driverId={user?.id || currentDriver?.id || 'driver-01'}
+        driverName={user?.full_name || currentDriver?.name || 'Driver'}
+        lorryCode={assignedLorry?.lorry_code || 'L-01'}
+        shipmentId={currentShipment?.id || 'standby'}
       />
 
-      {/* Next Stop Card */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 flex items-center gap-1">
-            <MapPin className="w-3.5 h-3.5" /> Designated Delivery Stop
-          </span>
-          <span className="text-xs font-bold text-slate-900">
-            ETA: {nextStop ? new Date(nextStop.arrival_eta).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '16:30'}
-          </span>
-        </div>
+      {/* Next Stop Card / Standby Card */}
+      {currentShipment && dynamicStop ? (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5" /> Designated {dynamicStop.stop_type} Stop
+            </span>
+            <span className="text-xs font-bold text-slate-900">
+              Deadline: {dynamicStop.deadline ? new Date(dynamicStop.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Scheduled'}
+            </span>
+          </div>
 
-        <div>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase bg-emerald-100 text-emerald-800">
-            {nextStop?.stop_type || 'DELIVERY'}
-          </span>
-          <h3 className="text-base font-black text-slate-900 mt-1">
-            {nextStop?.address || 'Hosur SIPCOT Industrial Complex, Phase 1'}
-          </h3>
-          <p className="text-xs text-slate-600 mt-1">
-            Consignment: <strong className="text-slate-900">{currentShipment?.shipment_code || 'S-1042'}</strong> ({currentShipment?.weight_kg || 500} kg • {currentShipment?.category || 'ELECTRONICS'})
+          <div>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${dynamicStop.stop_type === 'PICKUP' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+              {dynamicStop.stop_type}
+            </span>
+            <h3 className="text-base font-black text-slate-900 mt-1">
+              {dynamicStop.address}
+            </h3>
+            <p className="text-xs text-slate-600 mt-1">
+              Consignment: <strong className="text-slate-900">{currentShipment.shipment_code}</strong> ({currentShipment.weight_kg.toLocaleString()} kg • {currentShipment.category})
+            </p>
+          </div>
+
+          {/* Big Touch Driver Action Buttons */}
+          <div className="space-y-2 pt-2">
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${dynamicStop.latitude || 13.0827},${dynamicStop.longitude || 80.2707}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-card transition flex items-center justify-center gap-2 min-h-[50px]"
+            >
+              <Navigation className="w-4 h-4" />
+              START TURN NAVIGATION
+            </a>
+
+            {/* Dynamic contextual buttons based on stop type */}
+            {dynamicStop.stop_type === 'PICKUP' ? (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleDriverAction('ARRIVED_PICKUP', 'Driver reached shipper pickup warehouse')}
+                  className="py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-2xl shadow-sm transition min-h-[48px] flex items-center justify-center gap-1.5"
+                >
+                  <MapPin className="w-4 h-4" />
+                  ARRIVED AT PICKUP
+                </button>
+
+                <button
+                  onClick={() => handleDriverAction('PICKED_UP', 'Cargo loaded and secured. Moving on route.')}
+                  className="py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-2xl shadow-card transition min-h-[48px] flex items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  CONFIRM PICKUP
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleDriverAction('ARRIVED_DESTINATION', 'Driver arrived at receiver destination dock')}
+                  className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-2xl transition min-h-[48px]"
+                >
+                  ARRIVED AT DESTINATION
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsVerificationModalOpen(true);
+                    setVerifStep(1);
+                  }}
+                  className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-card transition min-h-[48px] flex items-center justify-center gap-1.5"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  VERIFY & DELIVER (OTP)
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={() => setIsDelayModalOpen(true)}
+              className="w-full py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-2xl border border-rose-200 transition min-h-[44px] flex items-center justify-center gap-1.5"
+            >
+              <AlertTriangle className="w-4 h-4 text-rose-600" />
+              REPORT DELAY OR BREAKDOWN
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-6 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+            <Truck className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-black text-slate-900">Standby • Ready for Dispatch</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+            No active shipments are currently assigned to your roster. Once the dispatcher allocates a load, turn navigation, pickup address, and receiver OTP will activate here.
           </p>
         </div>
-
-        {/* Big Touch Driver Action Buttons */}
-        <div className="space-y-2 pt-2">
-          <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${nextStop?.latitude || 12.8399},${nextStop?.longitude || 77.6770}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-card transition flex items-center justify-center gap-2 min-h-[50px]"
-          >
-            <Navigation className="w-4 h-4" />
-            START TURN NAVIGATION
-          </a>
-
-          {/* Dynamic contextual buttons based on stop type */}
-          {nextStop?.stop_type === 'PICKUP' ? (
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => handleDriverAction('ARRIVED_PICKUP', 'Driver reached shipper pickup warehouse')}
-                className="py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-2xl shadow-sm transition min-h-[48px] flex items-center justify-center gap-1.5"
-              >
-                <MapPin className="w-4 h-4" />
-                ARRIVED AT PICKUP
-              </button>
-
-              <button
-                onClick={() => handleDriverAction('PICKED_UP', 'Cargo loaded and secured. Moving on route.')}
-                className="py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-2xl shadow-card transition min-h-[48px] flex items-center justify-center gap-1.5"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                CONFIRM PICKUP
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => handleDriverAction('ARRIVED_DESTINATION', 'Driver arrived at receiver destination dock')}
-                className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-2xl transition min-h-[48px]"
-              >
-                ARRIVED AT DESTINATION
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsVerificationModalOpen(true);
-                  setVerifStep(1);
-                }}
-                className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl shadow-card transition min-h-[48px] flex items-center justify-center gap-1.5"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                VERIFY & DELIVER (OTP)
-              </button>
-            </div>
-          )}
-
-          <button
-            onClick={() => setIsDelayModalOpen(true)}
-            className="w-full py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-2xl border border-rose-200 transition min-h-[44px] flex items-center justify-center gap-1.5"
-          >
-            <AlertTriangle className="w-4 h-4 text-rose-600" />
-            REPORT DELAY OR BREAKDOWN
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Customer & Consignee Cargo Manifest Card */}
       {currentShipment && (

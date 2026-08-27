@@ -50,33 +50,50 @@ export default function DriverRoutePage() {
   }, []);
 
   const currentDriver = drivers.find(
-    (d) => d.email === user?.email || d.name === user?.full_name || d.id === user?.id
-  ) || drivers[0];
+    (d) => d.email === user?.email || (user?.email && d.email?.toLowerCase() === user.email.toLowerCase()) || (user?.full_name && d.name?.toLowerCase() === user.full_name.toLowerCase()) || d.id === user?.id
+  ) || null;
 
-  const assignedLorry = lorries.find(
-    (l) => l.assigned_driver_id === currentDriver?.id || l.id === currentDriver?.assigned_lorry_id
-  ) || lorries[0];
+  const assignedLorry = currentDriver
+    ? (lorries.find((l) => l.driver_id === currentDriver.id || l.assigned_driver_id === currentDriver.id || l.id === currentDriver.assigned_lorry_id) || null)
+    : (lorries.find((l) => l.assigned_driver_name === user?.full_name) || null);
 
-  const activeRoute = routes.find((r) => r.driver_id === currentDriver?.id) || routes[0] || {
-    id: 'rt-seed-01',
-    route_code: 'RT-CHN-HOS-01',
-    lorry_id: assignedLorry?.id || 'lorry-01',
-    lorry_code: assignedLorry?.lorry_code || 'L-11',
-    driver_id: currentDriver?.id || 'driver-01',
-    driver_name: currentDriver?.name || 'Murugan Selvam',
-    total_distance_km: 310.5,
-    total_duration_minutes: 360,
-    total_cost_inr: 7850,
-    status: 'IN_TRANSIT',
-    stops: [
-      { id: '1', shipment_id: 'shipment-1042', stop_type: 'PICKUP', address: 'Chennai Port Container Freight Station', arrival_eta: '09:00', status: 'COMPLETED', phone: '+91 98401 22334', latitude: 13.0827, longitude: 80.2707 },
-      { id: '2', shipment_id: 'shipment-1043', stop_type: 'PICKUP', address: 'Ambattur Industrial Estate Hub', arrival_eta: '10:15', status: 'COMPLETED', phone: '+91 98402 33445', latitude: 13.1143, longitude: 80.1548 },
-      { id: '3', shipment_id: 'shipment-1042', stop_type: 'DELIVERY', address: 'Hosur SIPCOT Industrial Complex, Phase 1', arrival_eta: '15:30', status: 'PENDING', phone: '+91 98801 44556', latitude: 12.7409, longitude: 77.8253 },
-      { id: '4', shipment_id: 'shipment-1043', stop_type: 'DELIVERY', address: 'Hosur Automotive Ancillary Yard', arrival_eta: '16:45', status: 'PENDING', phone: '+91 98802 55667', latitude: 12.7550, longitude: 77.8400 },
-    ],
-  };
+  const myShipments = shipments.filter(
+    (s) => (currentDriver && (s.assigned_driver_id === currentDriver.id || s.assigned_driver_name === currentDriver.name)) ||
+           (user?.full_name && s.assigned_driver_name?.toLowerCase() === user.full_name.toLowerCase()) ||
+           (assignedLorry && (s.assigned_lorry_id === assignedLorry.id || s.assigned_lorry_code === assignedLorry.lorry_code))
+  );
 
-  const stops = activeRoute.stops || [];
+  const activeShipment = myShipments.find((s) => s.status === 'IN_TRANSIT' || s.status === 'ASSIGNED' || s.status === 'PICKED_UP' || s.status === 'ACCEPTED') || myShipments[0] || null;
+
+  // Build real dynamic stops from driver's active shipments
+  const dynamicStops = myShipments.flatMap((s, sIdx) => [
+    {
+      id: `stop-pick-${s.id}`,
+      shipment_id: s.id,
+      stop_sequence: sIdx * 2 + 1,
+      stop_type: 'PICKUP',
+      address: s.pickup_address || `${s.pickup_city} Depot`,
+      arrival_eta: new Date(Date.now() + 30 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: s.status === 'ASSIGNED' || s.status === 'ACCEPTED' ? 'PENDING' : 'COMPLETED',
+      phone: s.sender_phone,
+      latitude: s.pickup_lat,
+      longitude: s.pickup_lng,
+    },
+    {
+      id: `stop-del-${s.id}`,
+      shipment_id: s.id,
+      stop_sequence: sIdx * 2 + 2,
+      stop_type: 'DELIVERY',
+      address: s.destination_address || `${s.destination_city} Consignee Dock`,
+      arrival_eta: s.delivery_deadline ? new Date(s.delivery_deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Scheduled',
+      status: s.status === 'DELIVERED' ? 'COMPLETED' : 'PENDING',
+      phone: s.receiver_phone,
+      latitude: s.destination_lat,
+      longitude: s.destination_lng,
+    },
+  ]);
+
+  const stops = dynamicStops;
   const completedStops = stops.filter((s) => s.status === 'COMPLETED');
   const remainingStops = stops.filter((s) => s.status !== 'COMPLETED');
   const nextStop = remainingStops[0] || stops[stops.length - 1];
@@ -95,59 +112,61 @@ export default function DriverRoutePage() {
             </div>
             <div>
               <span className="text-[10px] text-blue-200 font-bold uppercase tracking-wider block">Live Turn Corridor</span>
-              <h2 className="text-base font-bold text-white leading-tight">{activeRoute.route_code}</h2>
+              <h2 className="text-base font-bold text-white leading-tight">
+                {activeShipment ? `${activeShipment.pickup_city} → ${activeShipment.destination_city}` : 'Corridor Standby'}
+              </h2>
             </div>
           </div>
-          <span className="px-2.5 py-1 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-black tracking-wider uppercase flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />
-            ACTIVE ROUTE
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase flex items-center gap-1 ${activeShipment ? 'bg-emerald-400 text-slate-950' : 'bg-slate-700 text-white'}`}>
+            {activeShipment && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />}
+            {activeShipment ? 'ACTIVE CORRIDOR' : 'STANDBY'}
           </span>
         </div>
 
         <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/15 text-center text-xs font-semibold">
           <div className="bg-white/10 rounded-xl p-2">
-            <span className="text-[10px] text-blue-200 uppercase block font-bold">Distance</span>
-            <span className="text-sm font-black">{activeRoute.total_distance_km} km</span>
+            <span className="text-[10px] text-blue-200 uppercase block font-bold">Consignments</span>
+            <span className="text-sm font-black">{myShipments.length}</span>
           </div>
           <div className="bg-white/10 rounded-xl p-2">
-            <span className="text-[10px] text-blue-200 uppercase block font-bold">Stops</span>
+            <span className="text-[10px] text-blue-200 uppercase block font-bold">Waypoints</span>
             <span className="text-sm font-black">{completedStops.length} / {stops.length}</span>
           </div>
           <div className="bg-white/10 rounded-xl p-2">
             <span className="text-[10px] text-blue-200 uppercase block font-bold">Vehicle</span>
-            <span className="text-sm font-black">{assignedLorry?.lorry_code || 'L-11'}</span>
+            <span className="text-sm font-black">{assignedLorry?.lorry_code || 'Unassigned'}</span>
           </div>
         </div>
       </div>
 
       {/* Driver GPS Broadcaster */}
       <DriverGpsTracker
-        driverId={currentDriver?.id || 'driver-01'}
-        driverName={currentDriver?.name || 'Murugan Selvam'}
-        lorryCode={assignedLorry?.lorry_code || 'L-11'}
-        shipmentId={activeRoute.route_code}
+        driverId={user?.id || currentDriver?.id || 'driver-01'}
+        driverName={user?.full_name || currentDriver?.name || 'Driver'}
+        lorryCode={assignedLorry?.lorry_code || 'L-01'}
+        shipmentId={activeShipment?.id || 'standby'}
       />
 
       {/* Live Mapbox Route */}
       <div className="rounded-3xl overflow-hidden border border-slate-200 shadow-card">
         <LiveTrackingMapbox
           origin={{
-            lat: firstStop?.latitude || 13.0827,
-            lng: firstStop?.longitude || 80.2707,
-            city: firstStop?.address?.split(',')[0] || 'Chennai Hub',
-            address: firstStop?.address || 'Chennai Central Freight Hub',
+            lat: activeShipment?.pickup_lat || 11.0168,
+            lng: activeShipment?.pickup_lng || 76.9558,
+            city: activeShipment?.pickup_city || 'Origin',
+            address: activeShipment?.pickup_address || 'Pickup Facility',
           }}
           destination={{
-            lat: lastStop?.latitude || 12.7409,
-            lng: lastStop?.longitude || 77.8253,
-            city: lastStop?.address?.split(',')[0] || 'Hosur SIPCOT',
-            address: lastStop?.address || 'Hosur Industrial Complex',
+            lat: activeShipment?.destination_lat || 13.0827,
+            lng: activeShipment?.destination_lng || 80.2707,
+            city: activeShipment?.destination_city || 'Destination',
+            address: activeShipment?.destination_address || 'Destination Facility',
           }}
           status="IN_TRANSIT"
-          driverName={`${currentDriver?.name || 'Murugan Selvam'} (You)`}
-          vehicleCode={`${assignedLorry?.lorry_code || 'L-11'} (${assignedLorry?.registration_number || 'TN01FM0001'})`}
-          etaText={nextStop?.arrival_eta ? `ETA: ${nextStop.arrival_eta}` : '15:30 IST'}
-          shipmentId={activeRoute.route_code}
+          driverName={`${user?.full_name || currentDriver?.name || 'Driver'} (You)`}
+          vehicleCode={assignedLorry ? `${assignedLorry.lorry_code} (${assignedLorry.registration_number})` : 'Vehicle Unassigned'}
+          etaText={nextStop?.arrival_eta ? `ETA: ${nextStop.arrival_eta}` : 'Scheduled'}
+          shipmentId={activeShipment?.id || 'standby'}
           height="320px"
           showControls={true}
         />

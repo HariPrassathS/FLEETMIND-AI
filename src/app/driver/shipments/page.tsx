@@ -43,23 +43,23 @@ export default function DriverShipmentsPage() {
 
   // Find the current driver's data
   const currentDriver = drivers.find(
-    (d) => d.email === user?.email || d.name === user?.full_name || d.id === user?.id
-  ) || drivers[0];
+    (d) => d.email === user?.email || (user?.email && d.email?.toLowerCase() === user.email.toLowerCase()) || (user?.full_name && d.name?.toLowerCase() === user.full_name.toLowerCase()) || d.id === user?.id
+  ) || null;
 
   // Get lorry assigned to this driver
-  const assignedLorry = lorries.find(
-    (l) => l.assigned_driver_id === currentDriver?.id || l.id === currentDriver?.assigned_lorry_id
-  ) || lorries[0];
+  const assignedLorry = currentDriver
+    ? (lorries.find((l) => l.driver_id === currentDriver.id || l.assigned_driver_id === currentDriver.id || l.id === currentDriver.assigned_lorry_id) || null)
+    : (lorries.find((l) => l.assigned_driver_name === user?.full_name) || null);
 
   // Get shipments assigned to this driver's lorry or driver
   const myShipments = shipments.filter(
     (s) =>
-      s.assigned_driver_id === currentDriver?.id ||
-      s.assigned_lorry_id === assignedLorry?.id ||
-      s.assigned_driver_name === currentDriver?.name
+      (currentDriver && (s.assigned_driver_id === currentDriver.id || s.assigned_driver_name === currentDriver.name)) ||
+      (user?.full_name && s.assigned_driver_name?.toLowerCase() === user.full_name.toLowerCase()) ||
+      (assignedLorry && (s.assigned_lorry_id === assignedLorry.id || s.assigned_lorry_code === assignedLorry.lorry_code))
   );
 
-  const inTransit = myShipments.filter((s) => s.status === 'IN_TRANSIT' || s.status === 'DISPATCHED');
+  const inTransit = myShipments.filter((s) => s.status === 'IN_TRANSIT' || s.status === 'DISPATCHED' || s.status === 'ASSIGNED');
   const pending = myShipments.filter((s) => s.status === 'ACCEPTED' || s.status === 'PENDING_REVIEW');
   const delivered = myShipments.filter((s) => s.status === 'DELIVERED');
 

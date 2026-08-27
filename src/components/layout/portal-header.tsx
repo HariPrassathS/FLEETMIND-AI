@@ -39,12 +39,6 @@ export function PortalHeader({ title, subtitle }: PortalHeaderProps) {
   const alerts = fleetMindStore.getAlerts();
   const unreadAlerts = alerts.filter((a) => !a.is_read);
 
-  const handleRoleChange = (newRole: UserRole) => {
-    switchRoleDemo(newRole);
-    setIsRoleMenuOpen(false);
-    router.push(getRoleDashboardPath(newRole));
-  };
-
   const getRoleBadgeStyle = (r?: UserRole | null) => {
     switch (r) {
       case 'ADMIN':
@@ -145,73 +139,26 @@ export function PortalHeader({ title, subtitle }: PortalHeaderProps) {
             </button>
 
             {isRoleMenuOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-2xl p-2 z-50 animate-in fade-in">
-                <div className="px-3 py-2 border-b border-slate-100">
+              <div className="absolute right-0 mt-2 w-60 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in">
+                <div className="px-3 py-2.5 border-b border-slate-100">
                   <p className="text-xs font-bold text-slate-900">{user?.full_name}</p>
                   <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
-                </div>
-
-                <div className="py-2">
-                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Switch Evaluator Role:
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+                      Authenticated: {role || 'USER'}
+                    </span>
                   </div>
-
-                  <button
-                    onClick={() => handleRoleChange('DISPATCHER')}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-lg transition ${
-                      role === 'DISPATCHER' ? 'bg-blue-50 text-blue-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Package className="w-3.5 h-3.5" /> Dispatcher Command
-                    </span>
-                    {role === 'DISPATCHER' && <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
-                  </button>
-
-                  <button
-                    onClick={() => handleRoleChange('DRIVER')}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-lg transition ${
-                      role === 'DRIVER' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Truck className="w-3.5 h-3.5" /> Driver PWA Mobile
-                    </span>
-                    {role === 'DRIVER' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />}
-                  </button>
-
-                  <button
-                    onClick={() => handleRoleChange('MANAGER')}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-lg transition ${
-                      role === 'MANAGER' ? 'bg-amber-50 text-amber-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <BarChart3 className="w-3.5 h-3.5" /> Manager BI Analytics
-                    </span>
-                    {role === 'MANAGER' && <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />}
-                  </button>
-
-                  <button
-                    onClick={() => handleRoleChange('ADMIN')}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-lg transition ${
-                      role === 'ADMIN' ? 'bg-purple-50 text-purple-700 font-bold' : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Shield className="w-3.5 h-3.5" /> Administrator Portal
-                    </span>
-                    {role === 'ADMIN' && <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />}
-                  </button>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100">
+                <div className="py-1">
                   <button
                     onClick={async () => {
+                      setIsRoleMenuOpen(false);
                       await logout();
                       router.push('/login');
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     Sign Out

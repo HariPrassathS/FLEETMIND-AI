@@ -142,23 +142,17 @@ export default function LandingPage() {
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
-              href="/dispatcher/optimize"
-              className="px-6 py-3.5 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-900 border border-indigo-200 text-sm font-bold rounded-xl transition flex items-center gap-2 shadow-subtle hover:-translate-y-0.5"
-            >
-              <Zap className="w-4 h-4 text-indigo-600" />
-              <span>Launch Live Optimizer</span>
-            </Link>
-            <Link
               href="/login"
-              className="px-6 py-3.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-sm font-bold rounded-xl shadow-subtle hover:shadow-card hover:-translate-y-0.5 transition flex items-center gap-2"
+              className="px-7 py-3.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 text-sm font-bold rounded-xl shadow-subtle hover:shadow-card hover:-translate-y-0.5 transition flex items-center gap-2"
             >
+              <LogIn className="w-4 h-4 text-slate-500" />
               <span>Sign In to Command Center</span>
             </Link>
           </div>
 
           {/* Hero Corridor Live Preview Widget */}
           <div className="pt-8 max-w-4xl mx-auto">
-            <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-6 text-left relative overflow-hidden">
+            <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-8 space-y-6 text-left relative overflow-hidden glass-card-hover">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shadow-sm">
@@ -382,7 +376,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-2xl border border-slate-800 space-y-4">
+          <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-2xl border border-slate-800 space-y-4 glass-card-hover">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <span className="text-xs font-bold text-emerald-400">Live Optimization Loop</span>
               <span className="text-[10px] text-slate-400">Pure TypeScript</span>
@@ -396,11 +390,11 @@ export default function LandingPage() {
             </div>
             <div className="pt-2">
               <Link
-                href="/dispatcher/optimize"
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2"
+                href="/login"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-card"
               >
-                <Zap className="w-3.5 h-3.5" />
-                Run Live 15-Step Heuristic Optimizer
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In to Run Live Optimizer</span>
               </Link>
             </div>
           </div>
@@ -427,7 +421,7 @@ export default function LandingPage() {
               { title: '6. Routing', desc: '2-Opt Waypoints', icon: Route },
               { title: '7. Re-Optimize', desc: 'Self-Healing', icon: RotateCcw },
             ].map((step, idx) => (
-              <div key={idx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+              <div key={idx} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-2 glass-card-hover">
                 <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center mx-auto shadow-sm">
                   <step.icon className="w-4 h-4" />
                 </div>
@@ -452,8 +446,8 @@ export default function LandingPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-card space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center">
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-card space-y-3 glass-card-hover">
+            <div className="w-10 h-10 rounded-2xl bg-violet-100 text-violet-700 flex items-center justify-center">
               <Bot className="w-5 h-5" />
             </div>
             <h3 className="text-base font-bold text-slate-900">FleetMind AI Intelligence</h3>
@@ -462,8 +456,8 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-card space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-card space-y-3 glass-card-hover">
+            <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center">
               <Sparkles className="w-5 h-5" />
             </div>
             <h3 className="text-base font-bold text-slate-900">Natural Language Order Entry</h3>
@@ -472,8 +466,8 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-card space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+          <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-card space-y-3 glass-card-hover">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <h3 className="text-base font-bold text-slate-900">Assignment Explainability</h3>
@@ -497,32 +491,32 @@ export default function LandingPage() {
             </p>
             <div className="pt-2">
               <Link
-                href="/dispatcher/optimize"
+                href="/login"
                 className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700"
               >
-                Launch Fleet Load Optimizer <ArrowRight className="w-3.5 h-3.5" />
+                <span>Sign In to Access Optimizer</span> <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-3">
+          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 space-y-3 glass-card-hover">
             <div className="text-xs font-bold text-slate-700 uppercase">Consolidation Group G-07 Example:</div>
             <div className="space-y-2 text-xs">
-              <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
+              <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-xs">
                 <div>
                   <span className="font-bold text-slate-900">S-101 (2.2T Cotton Bedding)</span>
                   <p className="text-[11px] text-slate-500">Karur → Chennai CFS</p>
                 </div>
                 <span className="px-2 py-0.5 bg-rose-50 text-rose-700 font-bold rounded text-[10px]">CRITICAL SLA</span>
               </div>
-              <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
+              <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-xs">
                 <div>
                   <span className="font-bold text-slate-900">S-102 (1.9T Jacquard Curtains)</span>
                   <p className="text-[11px] text-slate-500">Karur → Chennai Port Gateway</p>
                 </div>
                 <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded text-[10px]">HIGH SLA</span>
               </div>
-              <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
+              <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-xs">
                 <div>
                   <span className="font-bold text-slate-900">S-104 (2.4T Yarn Rolls)</span>
                   <p className="text-[11px] text-slate-500">Karur → Madhavaram CFS</p>
@@ -536,7 +530,7 @@ export default function LandingPage() {
 
       {/* SECTION 8: ROUTE OPTIMIZATION */}
       <section className="py-16 px-4 sm:px-8 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-        <div className="bg-slate-900 rounded-2xl p-6 text-white space-y-4">
+        <div className="bg-slate-900 rounded-3xl p-6 text-white space-y-4 glass-card-hover">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <span className="text-xs font-bold text-blue-400">2-Opt Heuristic Routing</span>
             <span className="text-[10px] text-slate-400">Haversine x 1.28 Road Factor</span>
@@ -574,11 +568,11 @@ export default function LandingPage() {
 
           <div className="pt-2">
             <Link
-              href="/dispatcher/live"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-card transition"
+              href="/login"
+              className="inline-flex items-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-2xl shadow-card hover:shadow-card-hover transition"
             >
-              <Radio className="w-4 h-4 animate-pulse" />
-              Open Live Operations Map
+              <LogIn className="w-4 h-4" />
+              <span>Sign In to View Live Telemetry Map</span>
             </Link>
           </div>
         </div>
@@ -598,11 +592,11 @@ export default function LandingPage() {
 
         <div className="flex justify-center">
           <Link
-            href="/dispatcher/live"
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-card transition flex items-center gap-2"
+            href="/login"
+            className="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-2xl shadow-card hover:shadow-card-hover transition flex items-center gap-2"
           >
-            <Truck className="w-4 h-4" />
-            <span>Open Fleet Command & Recovery Center</span>
+            <LogIn className="w-4 h-4" />
+            <span>Sign In to Manage Fleet Recovery</span>
           </Link>
         </div>
       </section>
@@ -618,39 +612,39 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
+            <div className="p-6 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 glass-card-hover">
               <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded uppercase">Dispatcher</span>
               <h3 className="text-base font-bold text-slate-900">Command Center</h3>
               <p className="text-xs text-slate-600">Live map, 15-step optimization, shipment parser, and FleetMind AI.</p>
-              <Link href="/dispatcher/dashboard" className="text-xs font-bold text-blue-600 hover:underline inline-block pt-2">
-                Launch Portal →
+              <Link href="/login" className="text-xs font-bold text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 pt-2">
+                Sign In as Dispatcher <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
-            <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
+            <div className="p-6 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 glass-card-hover">
               <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded uppercase">Driver PWA</span>
               <h3 className="text-base font-bold text-slate-900">Mobile Execution</h3>
               <p className="text-xs text-slate-600">Mobile-first, bottom navigation, proof of delivery & offline sync queue.</p>
-              <Link href="/driver/dashboard" className="text-xs font-bold text-emerald-600 hover:underline inline-block pt-2">
-                Launch Portal →
+              <Link href="/login" className="text-xs font-bold text-emerald-600 hover:text-emerald-800 inline-flex items-center gap-1 pt-2">
+                Sign In as Driver <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
-            <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
+            <div className="p-6 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 glass-card-hover">
               <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded uppercase">Manager</span>
               <h3 className="text-base font-bold text-slate-900">BI Analytics</h3>
               <p className="text-xs text-slate-600">Fleet utilization, fuel benchmarking, cost trends & optimization ROI.</p>
-              <Link href="/manager/dashboard" className="text-xs font-bold text-amber-600 hover:underline inline-block pt-2">
-                Launch Portal →
+              <Link href="/login" className="text-xs font-bold text-amber-600 hover:text-amber-800 inline-flex items-center gap-1 pt-2">
+                Sign In as Manager <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
-            <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50 space-y-3">
+            <div className="p-6 rounded-3xl border border-slate-200 bg-slate-50 space-y-3 glass-card-hover">
               <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-bold rounded uppercase">Admin</span>
               <h3 className="text-base font-bold text-slate-900">System Controller</h3>
               <p className="text-xs text-slate-600">User management, fuel price settings, immutable audit logs & health checks.</p>
-              <Link href="/admin/dashboard" className="text-xs font-bold text-purple-600 hover:underline inline-block pt-2">
-                Launch Portal →
+              <Link href="/login" className="text-xs font-bold text-purple-600 hover:text-purple-800 inline-flex items-center gap-1 pt-2">
+                Sign In as Admin <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
           </div>

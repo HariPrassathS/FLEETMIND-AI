@@ -135,3 +135,26 @@
   animation-play-state: paused;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-float {
+  animation: float-slow 5s ease-in-out infinite;
+}
+
+.glass-card-hover {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 30px -10px rgba(37, 99, 235, 0.12), 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+}
+
+

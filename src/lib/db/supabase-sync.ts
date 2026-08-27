@@ -513,7 +513,6 @@ export async function syncVehicleToSupabase(lorry: Lorry): Promise<void> {
       status: lorry.status || 'AVAILABLE',
       is_refrigerated: Boolean(lorry.is_refrigerated),
       driver_id: lorry.driver_id ? ensureUUID(lorry.driver_id) : null,
-      assigned_driver_name: lorry.assigned_driver_name || null,
       updated_at: new Date().toISOString(),
     };
 

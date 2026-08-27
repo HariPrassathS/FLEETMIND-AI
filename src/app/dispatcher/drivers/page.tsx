@@ -86,22 +86,7 @@ export default function DispatcherDriversPage() {
     e.preventDefault();
     if (!selectedDriver) return;
 
-    // Update driver in store
-    const d = fleetMindStore.getDriverById(selectedDriver.id);
-    if (d) {
-      d.assigned_lorry_id = selectedLorryId || null;
-      d.updated_at = new Date().toISOString();
-    }
-
-    // Update lorry in store
-    if (selectedLorryId) {
-      const l = fleetMindStore.getLorryById(selectedLorryId);
-      if (l) {
-        l.driver_id = selectedDriver.id;
-        l.assigned_driver_name = selectedDriver.name;
-        l.updated_at = new Date().toISOString();
-      }
-    }
+    fleetMindStore.assignDriverToLorry(selectedDriver.id, selectedLorryId || null);
 
     setIsAssignModalOpen(false);
     setSelectedDriver(null);

@@ -1024,6 +1024,14 @@ class FleetMindStore {
     if (!skipRemoteSync) {
       syncShipmentToSupabase(newShipment);
     }
+
+    // Auto-dispatch CRITICAL priority loads immediately (Core Innovation)
+    if (newShipment.priority === 'CRITICAL') {
+      setTimeout(() => {
+        this.tryAutoDispatchShipment(newShipment.id);
+      }, 50);
+    }
+
     return newShipment;
   }
 
@@ -1047,9 +1055,11 @@ class FleetMindStore {
     this.notify('SHIPMENT_ACCEPTED', s);
     syncShipmentToSupabase(s);
 
-    // Auto-dispatch check
-    if (this.systemSettings.auto_dispatch_high_priority && (s.priority === 'CRITICAL' || s.priority === 'HIGH')) {
-      this.tryAutoDispatchShipment(s.id);
+    // Auto-dispatch CRITICAL and HIGH priority shipments immediately
+    if (s.priority === 'CRITICAL' || s.priority === 'HIGH' || this.systemSettings.auto_dispatch_high_priority) {
+      setTimeout(() => {
+        this.tryAutoDispatchShipment(s.id);
+      }, 50);
     }
 
     return s;
@@ -1096,7 +1106,9 @@ class FleetMindStore {
       const is_weight_ok = shipment.weight_kg <= remaining_weight;
       const is_volume_ok = shipment.volume_m3 <= remaining_volume;
 
-      const driver = this.drivers.find((d) => d.assigned_lorry_id === lorry.id || d.id === lorry.driver_id);
+      const driver = this.drivers.find((d) => d.assigned_lorry_id === lorry.id || d.id === lorry.driver_id) ||
+        this.drivers.find((d) => (d.availability_status === 'AVAILABLE' || d.availability_status === 'ON_DUTY') && (!d.assigned_lorry_id || d.assigned_lorry_id === lorry.id)) ||
+        this.drivers[0];
       const is_driver_ok = Boolean(driver && (driver.availability_status === 'AVAILABLE' || driver.availability_status === 'ON_DUTY'));
       const is_lorry_ok = lorry.status === 'AVAILABLE' || lorry.status === 'LOADING';
 
@@ -1162,6 +1174,66 @@ class FleetMindStore {
     }).sort((a, b) => b.decision_score - a.decision_score);
   }
 
+  public assignDriverToLorry(driverId: string, lorryId: string | null): boolean {
+    const driver = this.drivers.find((d) => d.id === driverId);
+    if (!driver) return false;
+
+    // If driver had a previous lorry, clear that lorry's driver assignment
+    if (driver.assigned_lorry_id && driver.assigned_lorry_id !== lorryId) {
+      const oldLorry = this.lorries.find((l) => l.id === driver.assigned_lorry_id);
+      if (oldLorry && (oldLorry.driver_id === driver.id || oldLorry.assigned_driver_id === driver.id)) {
+        oldLorry.driver_id = null;
+        oldLorry.assigned_driver_name = undefined;
+        oldLorry.assigned_driver_id = null;
+        oldLorry.updated_at = new Date().toISOString();
+        syncVehicleToSupabase(oldLorry);
+      }
+    }
+
+    if (lorryId) {
+      const targetLorry = this.lorries.find((l) => l.id === lorryId || l.lorry_code === lorryId);
+      if (targetLorry) {
+        // If target lorry had another driver, unassign that driver
+        if (targetLorry.driver_id && targetLorry.driver_id !== driver.id) {
+          const oldDriver = this.drivers.find((d) => d.id === targetLorry.driver_id);
+          if (oldDriver) {
+            oldDriver.assigned_lorry_id = null;
+            oldDriver.updated_at = new Date().toISOString();
+            syncDriverToSupabase(oldDriver);
+          }
+        }
+
+        // Bind driver to target lorry
+        driver.assigned_lorry_id = targetLorry.id;
+        driver.updated_at = new Date().toISOString();
+
+        targetLorry.driver_id = driver.id;
+        targetLorry.assigned_driver_id = driver.id;
+        targetLorry.assigned_driver_name = driver.name;
+        targetLorry.updated_at = new Date().toISOString();
+
+        this.saveToLocalStorage();
+        this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'DRIVER_ASSIGNED_TO_LORRY', 'LORRY', targetLorry.id, null, {
+          driver_name: driver.name,
+          lorry_code: targetLorry.lorry_code,
+        });
+        this.notify('DRIVER_ASSIGNED_TO_LORRY', { driver, lorry: targetLorry });
+        syncDriverToSupabase(driver);
+        syncVehicleToSupabase(targetLorry);
+        return true;
+      }
+    } else {
+      driver.assigned_lorry_id = null;
+      driver.updated_at = new Date().toISOString();
+      this.saveToLocalStorage();
+      this.notify('DRIVER_UNASSIGNED', driver);
+      syncDriverToSupabase(driver);
+      return true;
+    }
+
+    return false;
+  }
+
   public assignLorryAndDriver(shipmentId: string, lorryId: string, driverId?: string): Shipment | null {
     const shipment = this.shipments.find((s) => s.id === shipmentId || s.shipment_code === shipmentId);
     if (!shipment) return null;
@@ -1171,7 +1243,9 @@ class FleetMindStore {
 
     const driver = driverId
       ? this.drivers.find((d) => d.id === driverId)
-      : this.drivers.find((d) => d.assigned_lorry_id === lorry.id || d.id === lorry.driver_id) || this.drivers[0];
+      : this.drivers.find((d) => d.assigned_lorry_id === lorry.id || d.id === lorry.driver_id) ||
+        this.drivers.find((d) => d.availability_status === 'AVAILABLE' || d.availability_status === 'ON_DUTY') ||
+        this.drivers[0];
 
     shipment.status = 'ASSIGNED';
     shipment.assigned_lorry_id = lorry.id;
@@ -1179,6 +1253,18 @@ class FleetMindStore {
     shipment.assigned_driver_id = driver?.id || null;
     shipment.assigned_driver_name = driver?.name || 'Assigned Driver';
     shipment.updated_at = new Date().toISOString();
+
+    // Ensure driver and lorry are paired
+    if (driver) {
+      driver.assigned_lorry_id = lorry.id;
+      driver.availability_status = 'ON_DUTY';
+      lorry.driver_id = driver.id;
+      lorry.assigned_driver_id = driver.id;
+      lorry.assigned_driver_name = driver.name;
+      lorry.status = 'ON_ROUTE';
+      syncDriverToSupabase(driver);
+      syncVehicleToSupabase(lorry);
+    }
 
     // Create or link trip
     const existingTrip = this.trips.find((t) => t.lorry_id === lorry.id && t.status !== 'COMPLETED' && t.status !== 'CANCELLED');
@@ -1214,7 +1300,7 @@ class FleetMindStore {
       type: 'SHIPMENT_ASSIGNED',
       severity: 'LOW',
       title: `Consignment ${shipment.shipment_code} Assigned to ${lorry.lorry_code}`,
-      message: `Commercial carrier ${lorry.lorry_code} (${lorry.registration_number}) with driver ${driver?.name || 'Assigned Driver'} has been scheduled.`,
+      message: `Commercial carrier ${lorry.lorry_code} (${lorry.registration_number}) with pilot ${driver?.name || 'Assigned Driver'} has been allocated.`,
       action_url: `/customer/shipments/${shipment.id}`,
     });
 
@@ -1224,16 +1310,18 @@ class FleetMindStore {
         user_id: driver.id,
         shipment_id: shipment.id,
         type: 'NEW_ASSIGNMENT',
-        severity: 'MEDIUM',
-        title: `New Assignment: ${shipment.shipment_code}`,
+        severity: shipment.priority === 'CRITICAL' ? 'CRITICAL' : 'MEDIUM',
+        title: `${shipment.priority === 'CRITICAL' ? '🚨 URGENT CRITICAL DISPATCH: ' : 'New Assignment: '}${shipment.shipment_code}`,
         message: `Pickup scheduled at ${shipment.pickup_address} (${shipment.weight_kg.toLocaleString()} kg). Deadline: ${new Date(shipment.delivery_deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
         action_url: `/driver/route`,
       });
     }
 
+    this.saveToLocalStorage();
     this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'SHIPMENT_ASSIGNED', 'SHIPMENT', shipment.id, null, {
       lorry_code: lorry.lorry_code,
       driver_name: driver?.name,
+      priority: shipment.priority,
     });
 
     this.notify('SHIPMENT_ASSIGNED', shipment);
@@ -1242,17 +1330,34 @@ class FleetMindStore {
     return shipment;
   }
 
-  public tryAutoDispatchShipment(shipmentId: string) {
+  public tryAutoDispatchShipment(shipmentId: string): Shipment | null {
+    const shipment = this.shipments.find((s) => s.id === shipmentId || s.shipment_code === shipmentId);
+    if (!shipment) return null;
+
     const candidates = this.getCandidateLorriesForShipment(shipmentId);
-    const bestCandidate = candidates.find((c) => c.is_feasible);
+    const bestCandidate = candidates.find((c) => c.is_feasible) || candidates[0];
 
     if (bestCandidate) {
-      this.assignLorryAndDriver(shipmentId, bestCandidate.lorry.id, bestCandidate.driver?.id);
-      this.logAudit('system@fleetmind.ai', 'ADMIN', 'AUTO_DISPATCH_EXECUTED', 'SHIPMENT', shipmentId, null, {
+      const assigned = this.assignLorryAndDriver(shipmentId, bestCandidate.lorry.id, bestCandidate.driver?.id);
+      
+      this.createNotification({
+        title: `🚨 CRITICAL LOAD AUTO-DISPATCHED: ${shipment.shipment_code}`,
+        message: `High-priority SLA consignment (${shipment.weight_kg} kg) automatically matched and allocated to carrier ${bestCandidate.lorry.lorry_code} (${bestCandidate.driver?.name || 'Assigned Driver'}).`,
+        severity: 'CRITICAL',
+        type: 'SHIPMENT_ASSIGNED',
+        entity_type: 'SHIPMENT',
+        entity_id: shipment.id,
+      });
+
+      this.logAudit('system-optimizer@fleetmind.ai', 'ADMIN', 'CRITICAL_AUTO_DISPATCH_EXECUTED', 'SHIPMENT', shipmentId, null, {
         lorry_code: bestCandidate.lorry.lorry_code,
         score: bestCandidate.decision_score,
+        priority: shipment.priority,
       });
+
+      return assigned;
     }
+    return null;
   }
 
   public confirmPickup(shipmentId: string, driverId?: string, coords?: Coordinates): Shipment | null {

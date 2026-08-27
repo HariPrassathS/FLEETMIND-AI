@@ -8,6 +8,7 @@ import { UserCheck, Plus, X, Phone, User, CheckCircle2, Trash2 } from 'lucide-re
 
 export default function AdminDriversPage() {
   const [drivers, setDrivers] = useState<Driver[]>(fleetMindStore.getDrivers());
+  const [lorries, setLorries] = useState(fleetMindStore.getLorries());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -22,6 +23,7 @@ export default function AdminDriversPage() {
   useEffect(() => {
     const unsub = fleetMindStore.subscribe(() => {
       setDrivers(fleetMindStore.getDrivers());
+      setLorries(fleetMindStore.getLorries());
     });
     return unsub;
   }, []);
@@ -52,6 +54,10 @@ export default function AdminDriversPage() {
 
   const handleStatusChange = (driverId: string, status: DriverStatus) => {
     fleetMindStore.updateDriverStatus(driverId, status);
+  };
+
+  const handleAssignLorry = (driverId: string, lorryId: string) => {
+    fleetMindStore.assignDriverToLorry(driverId, lorryId || null);
   };
 
   const handleDeleteDriver = (driver: Driver) => {
@@ -93,6 +99,7 @@ export default function AdminDriversPage() {
                   <th className="py-3.5 px-6">Driver Name</th>
                   <th className="py-3.5 px-6">Contact Phone</th>
                   <th className="py-3.5 px-6">Commercial License #</th>
+                  <th className="py-3.5 px-6">Assigned Vehicle</th>
                   <th className="py-3.5 px-6">Shift Window</th>
                   <th className="py-3.5 px-6">Availability</th>
                   <th className="py-3.5 px-6 text-right">Actions</th>
@@ -107,6 +114,20 @@ export default function AdminDriversPage() {
                     </td>
                     <td className="py-3.5 px-6 text-slate-600">{d.phone}</td>
                     <td className="py-3.5 px-6 text-slate-700 font-mono">{d.license_number}</td>
+                    <td className="py-3.5 px-6">
+                      <select
+                        value={d.assigned_lorry_id || ''}
+                        onChange={(e) => handleAssignLorry(d.id, e.target.value)}
+                        className="text-xs font-bold px-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-600 max-w-[150px]"
+                      >
+                        <option value="">Reserve Pool (None)</option>
+                        {lorries.map((l) => (
+                          <option key={l.id} value={l.id}>
+                            {l.lorry_code} ({l.registration_number})
+                          </option>
+                        ))}
+                      </select>
+                    </td>
                     <td className="py-3.5 px-6 text-slate-600">{d.shift_start} - {d.shift_end} IST</td>
                     <td className="py-3.5 px-6">
                       <select

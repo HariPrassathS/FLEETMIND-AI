@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export interface BrandLogoProps {
   /**
@@ -48,12 +49,28 @@ export function BrandLogo({
   variant = 'full',
   size = 'md',
   asLink = true,
-  href = '/',
+  href,
   subtitle,
   badge,
   badgeColor = 'blue',
   className = '',
 }: BrandLogoProps) {
+  const pathname = usePathname() || '';
+
+  // Determine smart destination: stay within respective portal rather than logging out to landing page
+  const targetHref =
+    href ||
+    (pathname.startsWith('/customer')
+      ? '/customer/dashboard'
+      : pathname.startsWith('/dispatcher')
+      ? '/dispatcher/dashboard'
+      : pathname.startsWith('/driver')
+      ? '/driver/dashboard'
+      : pathname.startsWith('/admin')
+      ? '/admin/dashboard'
+      : pathname.startsWith('/manager')
+      ? '/manager/dashboard'
+      : '/');
   // Dimensions precisely calibrated to spec (Logo ~30-34px desktop, ~28px mobile, ~48px auth)
   const iconSizeClasses = {
     sm: 'w-7 h-7',
@@ -138,7 +155,7 @@ export function BrandLogo({
 
   if (asLink) {
     return (
-      <Link href={href} className="inline-flex items-center group">
+      <Link href={targetHref} className="inline-flex items-center group">
         {content}
       </Link>
     );

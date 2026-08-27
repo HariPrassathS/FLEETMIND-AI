@@ -65,7 +65,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         {/* Top Navbar */}
         <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <BrandLogo variant="compact" size="md" badge="SHIPPER" />
+            <BrandLogo variant="compact" size="md" badge="SHIPPER" href="/customer/dashboard" />
             <nav className="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl">
               {desktopNavItems.map((item) => {
                 const Icon = item.icon;

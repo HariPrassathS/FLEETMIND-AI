@@ -1,10 +1,15 @@
 /**
- * FleetMind AI — Canonical City & State Geocoding Registry
- * Precision coordinates for major Indian freight corridors & hubs.
+ * FleetMind AI — Canonical City & Regional Geocoding Registry
+ * Precision coordinates for major Indian freight corridors, districts, and taluks.
  */
 
 export const CITY_COORDINATES: Record<string, { lat: number; lng: number; state?: string }> = {
-  // Tamil Nadu Freight Hubs
+  // --- Tamil Nadu Freight Hubs, Towns & Industrial Belts ---
+  Oddanchatram: { lat: 10.4877, lng: 77.7492, state: 'Tamil Nadu' },
+  Oddanchathiram: { lat: 10.4877, lng: 77.7492, state: 'Tamil Nadu' },
+  Ottanchathiram: { lat: 10.4877, lng: 77.7492, state: 'Tamil Nadu' },
+  Dharapuram: { lat: 10.7369, lng: 77.5261, state: 'Tamil Nadu' },
+  Tarapuram: { lat: 10.7369, lng: 77.5261, state: 'Tamil Nadu' },
   Karur: { lat: 10.9601, lng: 78.0766, state: 'Tamil Nadu' },
   Chennai: { lat: 13.0827, lng: 80.2707, state: 'Tamil Nadu' },
   Coimbatore: { lat: 11.0168, lng: 76.9558, state: 'Tamil Nadu' },
@@ -19,18 +24,46 @@ export const CITY_COORDINATES: Record<string, { lat: number; lng: number; state?
   Erode: { lat: 11.341, lng: 77.7172, state: 'Tamil Nadu' },
   Vellore: { lat: 12.9165, lng: 79.1325, state: 'Tamil Nadu' },
   Dindigul: { lat: 10.3673, lng: 77.9803, state: 'Tamil Nadu' },
+  Palani: { lat: 10.4501, lng: 77.5197, state: 'Tamil Nadu' },
+  Pollachi: { lat: 10.6588, lng: 77.0093, state: 'Tamil Nadu' },
+  Udumalaipettai: { lat: 10.5843, lng: 77.2483, state: 'Tamil Nadu' },
+  Udumalpet: { lat: 10.5843, lng: 77.2483, state: 'Tamil Nadu' },
+  Kangeyam: { lat: 11.0055, lng: 77.5583, state: 'Tamil Nadu' },
+  Perundurai: { lat: 11.2758, lng: 77.5828, state: 'Tamil Nadu' },
+  Bhavani: { lat: 11.4489, lng: 77.6835, state: 'Tamil Nadu' },
+  Gobichettipalayam: { lat: 11.4552, lng: 77.4422, state: 'Tamil Nadu' },
+  Sathyamangalam: { lat: 11.5034, lng: 77.2441, state: 'Tamil Nadu' },
+  Mettupalayam: { lat: 11.3006, lng: 76.9427, state: 'Tamil Nadu' },
+  Avinashi: { lat: 11.1928, lng: 77.2691, state: 'Tamil Nadu' },
+  Palladam: { lat: 10.9996, lng: 77.2804, state: 'Tamil Nadu' },
   Namakkal: { lat: 11.2189, lng: 78.1674, state: 'Tamil Nadu' },
+  Rasipuram: { lat: 11.4646, lng: 78.1729, state: 'Tamil Nadu' },
+  Tiruchengode: { lat: 11.3789, lng: 77.8931, state: 'Tamil Nadu' },
+  Komarapalayam: { lat: 11.4422, lng: 77.7122, state: 'Tamil Nadu' },
   Thoothukudi: { lat: 8.7642, lng: 78.1348, state: 'Tamil Nadu' },
   Tuticorin: { lat: 8.7642, lng: 78.1348, state: 'Tamil Nadu' },
   Tirunelveli: { lat: 8.7139, lng: 77.7567, state: 'Tamil Nadu' },
   Nagercoil: { lat: 8.1833, lng: 77.4119, state: 'Tamil Nadu' },
   Kanyakumari: { lat: 8.0883, lng: 77.5385, state: 'Tamil Nadu' },
   Kanchipuram: { lat: 12.8342, lng: 79.7036, state: 'Tamil Nadu' },
+  Sriperumbudur: { lat: 12.9699, lng: 79.9482, state: 'Tamil Nadu' },
+  Oragadam: { lat: 12.8392, lng: 79.9328, state: 'Tamil Nadu' },
+  Chengalpattu: { lat: 12.6841, lng: 79.9836, state: 'Tamil Nadu' },
   Cuddalore: { lat: 11.748, lng: 79.7714, state: 'Tamil Nadu' },
   Thanjavur: { lat: 10.787, lng: 79.1378, state: 'Tamil Nadu' },
+  Kumbakonam: { lat: 10.9602, lng: 79.3845, state: 'Tamil Nadu' },
+  Nagapattinam: { lat: 10.7656, lng: 79.8424, state: 'Tamil Nadu' },
+  Pudukkottai: { lat: 10.3833, lng: 78.8001, state: 'Tamil Nadu' },
+  Karaikudi: { lat: 10.0735, lng: 78.7732, state: 'Tamil Nadu' },
+  Virudhunagar: { lat: 9.568, lng: 77.9624, state: 'Tamil Nadu' },
+  Sivakasi: { lat: 9.4533, lng: 77.7972, state: 'Tamil Nadu' },
+  Rajapalayam: { lat: 9.4532, lng: 77.5543, state: 'Tamil Nadu' },
+  Theni: { lat: 10.0104, lng: 77.4768, state: 'Tamil Nadu' },
+  Dharmapuri: { lat: 12.1211, lng: 78.1582, state: 'Tamil Nadu' },
+  Krishnagiri: { lat: 12.5266, lng: 78.2146, state: 'Tamil Nadu' },
 
-  // Kerala Corridors & Depots
-  Kerala: { lat: 9.9312, lng: 76.2673, state: 'Kerala' }, // Defaults to central Kochi Freight Corridor
+  // --- Kerala Corridors & Depots ---
+  Kerala: { lat: 9.9312, lng: 76.2673, state: 'Kerala' },
   Kochi: { lat: 9.9312, lng: 76.2673, state: 'Kerala' },
   Cochin: { lat: 9.9312, lng: 76.2673, state: 'Kerala' },
   Ernakulam: { lat: 9.9816, lng: 76.2999, state: 'Kerala' },
@@ -48,7 +81,7 @@ export const CITY_COORDINATES: Record<string, { lat: number; lng: number; state?
   Malappuram: { lat: 11.051, lng: 76.0711, state: 'Kerala' },
   Wayanad: { lat: 11.6854, lng: 76.132, state: 'Kerala' },
 
-  // North & National Capitals
+  // --- North & National Capitals ---
   Delhi: { lat: 28.6139, lng: 77.209, state: 'Delhi' },
   'New Delhi': { lat: 28.6139, lng: 77.209, state: 'Delhi' },
   Noida: { lat: 28.5355, lng: 77.391, state: 'Uttar Pradesh' },
@@ -58,7 +91,7 @@ export const CITY_COORDINATES: Record<string, { lat: number; lng: number; state?
   Ghaziabad: { lat: 28.6692, lng: 77.4538, state: 'Uttar Pradesh' },
   Faridabad: { lat: 28.4089, lng: 77.3178, state: 'Haryana' },
 
-  // Karnataka & Andhra / Telangana / Pan-India
+  // --- Karnataka, Telangana, Andhra & Pan-India ---
   Bengaluru: { lat: 12.9716, lng: 77.5946, state: 'Karnataka' },
   Bangalore: { lat: 12.9716, lng: 77.5946, state: 'Karnataka' },
   Mysuru: { lat: 12.2958, lng: 76.6394, state: 'Karnataka' },
@@ -95,8 +128,8 @@ export const CITY_COORDINATES: Record<string, { lat: number; lng: number; state?
 };
 
 /**
- * Resolves a city name (or state) to exact latitude and longitude.
- * Performs intelligent fuzzy matching and case-insensitive lookup.
+ * Resolves a city name (or state/district/compound text) to exact latitude and longitude.
+ * Performs intelligent fuzzy matching, compound split, and case-insensitive lookup.
  */
 export function resolveCityCoordinates(
   cityName?: string,
@@ -116,7 +149,7 @@ export function resolveCityCoordinates(
     }
   }
 
-  // 2. Token / word boundary match (e.g. "TIRCHY BUS STOP", "delhi,", "chennai port", "delhi cfs")
+  // 2. Token / word boundary match (e.g. "Oddanchatram Market", "Dharapuram Town", "TIRCHY BUS STOP")
   const tokens = query.split(' ');
   for (const token of tokens) {
     if (token.length < 3) continue;
@@ -129,23 +162,27 @@ export function resolveCityCoordinates(
 
   // 3. Substring match
   for (const [name, coords] of Object.entries(CITY_COORDINATES)) {
-    if (query.includes(name.toLowerCase()) || name.toLowerCase().includes(query)) {
+    const nLower = name.toLowerCase();
+    if (query.includes(nLower) || nLower.includes(query)) {
       return { lat: coords.lat, lng: coords.lng, cityName: name };
     }
   }
 
-  // 4. Special aliases & common typos
+  // 4. Common regional typos & aliases
+  if (query.includes('oddanchat') || query.includes('ottanchat') || query.includes('oddanchathiram')) {
+    return { lat: 10.4877, lng: 77.7492, cityName: 'Oddanchatram' };
+  }
+  if (query.includes('dharapur') || query.includes('tarapur')) {
+    return { lat: 10.7369, lng: 77.5261, cityName: 'Dharapuram' };
+  }
   if (query.includes('tricht') || query.includes('tirchy') || query.includes('trichy') || query.includes('tiruchirapalli')) {
     return { lat: 10.7905, lng: 78.7047, cityName: 'Trichy' };
   }
-  if (query.includes('delhi')) {
-    return { lat: 28.6139, lng: 77.209, cityName: 'Delhi' };
-  }
-  if (query.includes('kerala') || query.includes('malabar') || query.includes('gods own country')) {
-    return { lat: 9.9312, lng: 76.2673, cityName: 'Kochi (Kerala)' };
-  }
-  if (query.includes('karur') || query.includes('textile hub')) {
+  if (query.includes('karur')) {
     return { lat: 10.9601, lng: 78.0766, cityName: 'Karur' };
+  }
+  if (query.includes('kerala') || query.includes('kochi') || query.includes('cochin') || query.includes('ernakulam')) {
+    return { lat: 9.9312, lng: 76.2673, cityName: 'Kochi (Kerala Corridor)' };
   }
 
   return { ...fallback, cityName: raw };

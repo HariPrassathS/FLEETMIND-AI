@@ -162,6 +162,11 @@ function fallbackExtractShipment(text: string): ParsedShipment {
 
   // Origin & Destination detection
   const cities = [
+    'Oddanchatram',
+    'Dharapuram',
+    'Palani',
+    'Pollachi',
+    'Udumalpet',
     'Karur',
     'Kerala',
     'Kochi',

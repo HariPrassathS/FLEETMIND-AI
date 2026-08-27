@@ -19,6 +19,95 @@ export interface GeocodeResult {
   country?: string;
 }
 
+export interface PlaceResult {
+  name: string;
+  category: string;
+  formattedAddress: string;
+  lat: number;
+  lng: number;
+  distanceMeters?: number;
+}
+
+/**
+ * Returns Geoapify Raster Tile URL for Leaflet Map Rendering.
+ * Styles: 'carto', 'osm-bright', 'positron', 'dark-matter', 'klokantech-basic'
+ */
+export function getGeoapifyTileUrl(style: string = 'carto'): string {
+  return `https://maps.geoapify.com/v1/tile/${style}/{z}/{x}/{y}.png?apiKey=${GEOAPIFY_API_KEY}`;
+}
+
+/**
+ * Autocomplete address or landmark query using Geoapify Autocomplete API.
+ */
+export async function geocodeAutocompleteWithGeoapify(text: string): Promise<GeocodeResult[]> {
+  if (!text || text.trim().length < 2) return [];
+  try {
+    const encoded = encodeURIComponent(text.trim());
+    const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encoded}&apiKey=${GEOAPIFY_API_KEY}`;
+
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'FleetMind-AI/1.0' },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!data.features) return [];
+
+    return data.features.map((f: any) => {
+      const [lng, lat] = f.geometry.coordinates;
+      return {
+        lat,
+        lng,
+        formattedAddress: f.properties.formatted || text,
+        city: f.properties.city || f.properties.name,
+        state: f.properties.state,
+        country: f.properties.country,
+      };
+    });
+  } catch (err) {
+    console.warn('[Geoapify] Autocomplete lookup failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Searches places, fuel stations, logistics depots, and supermarkets using Geoapify Places API.
+ */
+export async function fetchGeoapifyPlaces(
+  categories: string = 'commercial.supermarket,service.vehicle.fuel',
+  filterRect?: string
+): Promise<PlaceResult[]> {
+  try {
+    const filterParam = filterRect ? `&filter=rect:${encodeURIComponent(filterRect)}` : '';
+    const url = `https://api.geoapify.com/v2/places?categories=${encodeURIComponent(categories)}${filterParam}&limit=20&apiKey=${GEOAPIFY_API_KEY}`;
+
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'FleetMind-AI/1.0' },
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!data.features) return [];
+
+    return data.features.map((f: any) => {
+      const [lng, lat] = f.geometry.coordinates;
+      return {
+        name: f.properties.name || f.properties.formatted || 'Commercial Point',
+        category: f.properties.categories?.[0] || categories,
+        formattedAddress: f.properties.formatted || '',
+        lat,
+        lng,
+        distanceMeters: f.properties.distance,
+      };
+    });
+  } catch (err) {
+    console.warn('[Geoapify] Places API lookup failed:', err);
+    return [];
+  }
+}
+
 /**
  * Searches and geocodes any text query or address worldwide using Geoapify Geocoding API.
  */

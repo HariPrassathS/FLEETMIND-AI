@@ -217,10 +217,13 @@ export function LiveTrackingMapbox({
         scrollWheelZoom: true,
       });
 
-      // Clean OpenStreetMap tiles - 100% Free & No watermark
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
+      const geoapifyKey = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY || 'a48dac453c194c269d3ae0901dc34814';
+
+      // Geoapify Carto Tile Layer - High-Resolution, Crisp Logistics Cartography
+      L.tileLayer(`https://maps.geoapify.com/v1/tile/carto/{z}/{x}/{y}.png?apiKey=${geoapifyKey}`, {
+        attribution: 'Powered by <a href="https://www.geoapify.com/" target="_blank">Geoapify</a> | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 20,
+        subdomains: ['a', 'b', 'c', 'd'],
       }).addTo(map);
 
       markersLayerRef.current = L.layerGroup().addTo(map);

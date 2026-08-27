@@ -106,10 +106,11 @@ export function LiveFleetMap({
         scrollWheelZoom: true,
       });
 
-      // High-resolution OpenStreetMap tiles
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
+      // Geoapify Carto High-Resolution Tile Layer
+      L.tileLayer(`https://maps.geoapify.com/v1/tile/carto/{z}/{x}/{y}.png?apiKey=${GEOAPIFY_KEY}`, {
+        attribution: 'Powered by <a href="https://www.geoapify.com/" target="_blank">Geoapify</a> | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 20,
+        subdomains: ['a', 'b', 'c', 'd'],
       }).addTo(map);
 
       markersLayerRef.current = L.layerGroup().addTo(map);

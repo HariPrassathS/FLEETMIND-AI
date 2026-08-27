@@ -6,6 +6,7 @@ import { useAuth } from '../../../lib/auth/auth-context';
 import { fleetMindStore } from '../../../lib/db/store';
 import { ShipmentCategory, ShipmentPriority } from '../../../lib/optimization/types';
 import { parseShipmentWithAI, ParsedShipment } from '../../../lib/ai/groq';
+import { resolveCityCoordinates } from '../../../lib/routing/city-coordinates';
 import {
   Package,
   Sparkles,
@@ -150,9 +151,12 @@ export default function CreateShipmentPage() {
     if (!parsedData) return;
     setIsSubmitting(true);
 
+    const pickupGeo = resolveCityCoordinates(parsedData.pickup_city);
+    const destGeo = resolveCityCoordinates(parsedData.destination_city);
+
     const newShipment = fleetMindStore.createShipment({
-      customer_id: user?.id || 'cust-abc-electronics',
-      customer_name: user?.full_name || 'ABC Electronics India Pvt Ltd',
+      customer_id: user?.id || 'cust-direct',
+      customer_name: user?.full_name || 'Commercial Shipper',
       customer_email: user?.email || 'customer@fleetmind.ai',
       description: parsedData.commodity,
       weight_kg: parsedData.weight_kg,
@@ -164,16 +168,20 @@ export default function CreateShipmentPage() {
       delivery_deadline: new Date(parsedData.delivery_deadline).toISOString(),
       pickup_city: parsedData.pickup_city,
       pickup_address: parsedData.pickup_address,
+      pickup_lat: pickupGeo.lat,
+      pickup_lng: pickupGeo.lng,
       destination_city: parsedData.destination_city,
       destination_address: parsedData.destination_address,
-      sender_name: parsedData.sender_name || user?.full_name || '',
+      destination_lat: destGeo.lat,
+      destination_lng: destGeo.lng,
+      sender_name: parsedData.sender_name || user?.full_name || 'Shipper Contact',
       sender_company: parsedData.sender_company || '',
       sender_email: user?.email || '',
       sender_phone: parsedData.sender_phone || '',
-      receiver_name: parsedData.receiver_name || '',
+      receiver_name: parsedData.receiver_name || 'Consignee Receiver',
       receiver_company: parsedData.receiver_company || '',
       receiver_email: '',
-      receiver_phone: parsedData.receiver_phone || '',
+      receiver_phone: parsedData.receiver_phone || '+91 98410 11111',
       status: 'PENDING_DISPATCH',
     });
 
@@ -183,7 +191,7 @@ export default function CreateShipmentPage() {
       shipment_id: newShipment.id,
       type: 'SHIPMENT_CREATED',
       title: `Shipment ${newShipment.shipment_code} Created`,
-      message: `Your consignment has been lodged with Dispatcher Command. Optimization and vehicle assignment in progress.`,
+      message: `Your consignment from ${newShipment.pickup_city} to ${newShipment.destination_city} has been lodged. Optimization and vehicle assignment in progress.`,
       action_url: `/customer/shipments/${newShipment.id}`,
     });
 
@@ -204,6 +212,9 @@ export default function CreateShipmentPage() {
     e.preventDefault();
     setIsSubmitting(true);
 
+    const pickupGeo = resolveCityCoordinates(form.senderCity, { lat: form.pickupLat, lng: form.pickupLng });
+    const destGeo = resolveCityCoordinates(form.receiverCity, { lat: form.deliveryLat, lng: form.deliveryLng });
+
     const newShipment = fleetMindStore.createShipment({
       customer_id: user?.id || 'cust-direct',
       customer_name: form.senderCompany || user?.full_name || 'Commercial Shipper',
@@ -218,36 +229,37 @@ export default function CreateShipmentPage() {
       special_instructions: form.specialInstructions,
       pickup_time: new Date(form.pickupTime).toISOString(),
       delivery_deadline: new Date(form.deliveryDeadline).toISOString(),
-      pickup_city: form.senderCity,
+      pickup_city: form.senderCity || pickupGeo.cityName,
       pickup_address: `${form.senderAddressLine1}, ${form.senderAddressLine2}`,
-      destination_city: form.receiverCity,
+      pickup_lat: pickupGeo.lat,
+      pickup_lng: pickupGeo.lng,
+      destination_city: form.receiverCity || destGeo.cityName,
       destination_address: `${form.receiverAddressLine1}, ${form.receiverAddressLine2}`,
+      destination_lat: destGeo.lat,
+      destination_lng: destGeo.lng,
       sender_type: form.senderType,
       sender_name: form.senderName || user?.full_name || 'Shipper Contact',
       sender_company: form.senderCompany,
       sender_email: user?.email || form.senderEmail || 'customer@fleetmind.ai',
-      sender_phone: form.senderPhone,
+      sender_phone: form.senderPhone || '+91 98410 00000',
       sender_address_line1: form.senderAddressLine1,
       sender_address_line2: form.senderAddressLine2,
       sender_city: form.senderCity,
       sender_state: form.senderState,
       sender_postal_code: form.senderPostalCode,
       sender_country: form.senderCountry,
-      pickup_lat: form.pickupLat,
-      pickup_lng: form.pickupLng,
       receiver_type: form.receiverType,
-      receiver_name: form.receiverName,
+      receiver_name: form.receiverName || 'Consignee Receiver',
       receiver_company: form.receiverCompany,
       receiver_email: form.receiverEmail,
-      receiver_phone: form.receiverPhone,
+      receiver_phone: form.receiverPhone || '+91 98410 11111',
       receiver_address_line1: form.receiverAddressLine1,
       receiver_address_line2: form.receiverAddressLine2,
       receiver_city: form.receiverCity,
       receiver_state: form.receiverState,
       receiver_postal_code: form.receiverPostalCode,
-      destination_lat: form.deliveryLat,
-      destination_lng: form.deliveryLng,
-      status: form.priority === 'CRITICAL' ? 'ACCEPTED' : 'PENDING_REVIEW',
+      receiver_country: form.receiverCountry,
+      status: 'PENDING_DISPATCH',
     });
 
     fleetMindStore.createNotification({

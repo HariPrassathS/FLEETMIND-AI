@@ -37,74 +37,94 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  // 2. Build Mapbox Directions API URL
-  // Coordinates: lng,lat;lng,lat;... (Mapbox order)
+  // 2. Build Coordinates string: lng,lat;lng,lat;...
   const allCoords: LngLat[] = [origin, ...waypoints, destination];
   const coordStr = allCoords.map(([lng, lat]) => `${lng},${lat}`).join(';');
-  const mapboxUrl =
-    `https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}` +
-    `?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
 
-  try {
-    // 3. Call Mapbox Directions API
-    const mbRes = await fetch(mapboxUrl, {
-      headers: { 'User-Agent': 'FleetMind-AI/1.0' },
-      signal: AbortSignal.timeout(8000), // 8s timeout
-    });
+  // Try 1: Mapbox Directions API if token exists
+  if (MAPBOX_TOKEN) {
+    try {
+      const mapboxUrl =
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}` +
+        `?geometries=geojson&overview=full&steps=true&access_token=${MAPBOX_TOKEN}`;
 
-    if (!mbRes.ok) {
-      throw new Error(`Mapbox error ${mbRes.status}: ${await mbRes.text()}`);
+      const mbRes = await fetch(mapboxUrl, {
+        headers: { 'User-Agent': 'FleetMind-AI/1.0' },
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (mbRes.ok) {
+        const mbData = await mbRes.json();
+        if (mbData.routes && mbData.routes.length > 0) {
+          const route = mbData.routes[0];
+          const geometry: LngLat[] = route.geometry.coordinates;
+
+          const legs: RouteLeg[] = (route.legs as any[]).map((leg: any, i: number) => ({
+            geometry: leg.steps?.flatMap((s: any) => s.geometry?.coordinates ?? []) || geometry,
+            distance_km: Number((leg.distance / 1000).toFixed(2)),
+            duration_minutes: Number((leg.duration / 60).toFixed(1)),
+            summary: leg.summary || `Leg ${i + 1}`,
+          }));
+
+          return NextResponse.json({
+            geometry,
+            total_distance_km: Number((route.distance / 1000).toFixed(2)),
+            total_duration_minutes: Number((route.duration / 60).toFixed(1)),
+            legs,
+            is_fallback: false,
+            fetched_at: new Date().toISOString(),
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[/api/routing/directions] Mapbox failed, attempting OSRM...');
     }
-
-    const mbData = await mbRes.json();
-
-    if (!mbData.routes || mbData.routes.length === 0) {
-      throw new Error('No routes returned from Mapbox');
-    }
-
-    const route = mbData.routes[0];
-
-    // 4. Extract geometry (GeoJSON LineString coordinates = [lng, lat][])
-    const geometry: LngLat[] = route.geometry.coordinates;
-
-    // 5. Build per-leg data
-    const legs: RouteLeg[] = (route.legs as any[]).map((leg: any, i: number) => {
-      const legGeom: LngLat[] = leg.steps
-        ? leg.steps.flatMap((step: any) => step.geometry?.coordinates ?? [])
-        : [];
-
-      return {
-        geometry: legGeom.length > 0 ? legGeom : geometry,
-        distance_km: Number((leg.distance / 1000).toFixed(2)),
-        duration_minutes: Number((leg.duration / 60).toFixed(1)),
-        summary: leg.summary || `Leg ${i + 1}`,
-      };
-    });
-
-    // 6. Build final response
-    const result: RouteResult = {
-      geometry,
-      total_distance_km: Number((route.distance / 1000).toFixed(2)),
-      total_duration_minutes: Number((route.duration / 60).toFixed(1)),
-      legs,
-      is_fallback: false,
-      fetched_at: new Date().toISOString(),
-    };
-
-    return NextResponse.json(result);
-  } catch (err) {
-    // 7. Fallback — return Haversine approximation so the UI never breaks
-    console.error('[/api/routing/directions] Mapbox error, using fallback:', err);
-
-    const stops = allCoords.map(([lng, lat], i) => ({
-      lat,
-      lng,
-      label: i === 0 ? 'Origin' : i === allCoords.length - 1 ? 'Destination' : `Waypoint ${i}`,
-    }));
-
-    const fallback = buildFallbackRoute(stops);
-    return NextResponse.json(fallback);
   }
+
+  // Try 2: Open Source Routing Machine (OSRM) - 100% Free real highway routing
+  try {
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson&steps=true`;
+    const osrmRes = await fetch(osrmUrl, {
+      headers: { 'User-Agent': 'FleetMind-AI/1.0' },
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (osrmRes.ok) {
+      const osrmData = await osrmRes.json();
+      if (osrmData.routes && osrmData.routes.length > 0) {
+        const route = osrmData.routes[0];
+        const geometry: LngLat[] = route.geometry.coordinates;
+
+        const legs: RouteLeg[] = (route.legs as any[]).map((leg: any, i: number) => ({
+          geometry: leg.steps?.flatMap((s: any) => s.geometry?.coordinates ?? []) || geometry,
+          distance_km: Number((leg.distance / 1000).toFixed(2)),
+          duration_minutes: Number((leg.duration / 60).toFixed(1)),
+          summary: leg.summary || `Leg ${i + 1}`,
+        }));
+
+        return NextResponse.json({
+          geometry,
+          total_distance_km: Number((route.distance / 1000).toFixed(2)),
+          total_duration_minutes: Number((route.duration / 60).toFixed(1)),
+          legs,
+          is_fallback: false,
+          fetched_at: new Date().toISOString(),
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[/api/routing/directions] OSRM failed, using geometric interpolation...');
+  }
+
+  // Fallback: Haversine interpolation
+  const stops = allCoords.map(([lng, lat], i) => ({
+    lat,
+    lng,
+    label: i === 0 ? 'Origin' : i === allCoords.length - 1 ? 'Destination' : `Waypoint ${i}`,
+  }));
+
+  const fallback = buildFallbackRoute(stops);
+  return NextResponse.json(fallback);
 }
 
 // Handle OPTIONS for CORS (not usually needed for same-origin Next.js)

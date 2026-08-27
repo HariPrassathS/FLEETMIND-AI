@@ -7,6 +7,7 @@ import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
 import { ShipmentCategory, ShipmentPriority } from '../../../lib/optimization/types';
 import { parseShipmentWithAI, ParsedShipment } from '../../../lib/ai/groq';
+import { CITY_COORDINATES, resolveCityCoordinates } from '../../../lib/routing/city-coordinates';
 import {
   Package,
   Sparkles,
@@ -27,19 +28,6 @@ import {
   Plus,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-
-const CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
-  Chennai: { lat: 13.0827, lng: 80.2707 },
-  Bengaluru: { lat: 12.9716, lng: 77.5946 },
-  Coimbatore: { lat: 11.0168, lng: 76.9558 },
-  Salem: { lat: 11.6643, lng: 78.146 },
-  Hosur: { lat: 12.8399, lng: 77.677 },
-  Karur: { lat: 10.9601, lng: 78.0766 },
-  Tirupur: { lat: 11.1085, lng: 77.3411 },
-  Madurai: { lat: 9.9252, lng: 78.1198 },
-  Hyderabad: { lat: 17.385, lng: 78.4867 },
-  Kochi: { lat: 9.9312, lng: 76.2673 },
-};
 
 export default function DispatcherCreateShipmentPage() {
   const router = useRouter();
@@ -106,8 +94,8 @@ export default function DispatcherCreateShipmentPage() {
       setParsedData(result);
 
       // Auto-populate form
-      const pickupCoords = CITY_COORDINATES[result.pickup_city] || { lat: 13.0827, lng: 80.2707 };
-      const destCoords = CITY_COORDINATES[result.destination_city] || { lat: 12.8399, lng: 77.677 };
+      const pickupCoords = resolveCityCoordinates(result.pickup_city);
+      const destCoords = resolveCityCoordinates(result.destination_city);
 
       setForm((prev) => ({
         ...prev,
@@ -142,20 +130,20 @@ export default function DispatcherCreateShipmentPage() {
   };
 
   const handleCityChange = (field: 'pickupCity' | 'destinationCity', city: string) => {
-    const coords = CITY_COORDINATES[city];
+    const coords = resolveCityCoordinates(city);
     if (field === 'pickupCity') {
       setForm((prev) => ({
         ...prev,
         pickupCity: city,
-        pickupLat: coords ? coords.lat : prev.pickupLat,
-        pickupLng: coords ? coords.lng : prev.pickupLng,
+        pickupLat: coords.lat,
+        pickupLng: coords.lng,
       }));
     } else {
       setForm((prev) => ({
         ...prev,
         destinationCity: city,
-        destinationLat: coords ? coords.lat : prev.destinationLat,
-        destinationLng: coords ? coords.lng : prev.destinationLng,
+        destinationLat: coords.lat,
+        destinationLng: coords.lng,
       }));
     }
   };

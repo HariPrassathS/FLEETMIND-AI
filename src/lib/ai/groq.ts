@@ -161,16 +161,52 @@ function fallbackExtractShipment(text: string): ParsedShipment {
   }
 
   // Origin & Destination detection
-  const cities = ['Karur', 'Chennai', 'Bengaluru', 'Coimbatore', 'Madurai', 'Salem', 'Hosur', 'Tirupur', 'Hyderabad', 'Pune', 'Mumbai'];
+  const cities = [
+    'Karur',
+    'Kerala',
+    'Kochi',
+    'Cochin',
+    'Palakkad',
+    'Trivandrum',
+    'Thiruvananthapuram',
+    'Kozhikode',
+    'Calicut',
+    'Thrissur',
+    'Kannur',
+    'Alappuzha',
+    'Kollam',
+    'Kottayam',
+    'Chennai',
+    'Bengaluru',
+    'Bangalore',
+    'Coimbatore',
+    'Madurai',
+    'Salem',
+    'Hosur',
+    'Tirupur',
+    'Trichy',
+    'Erode',
+    'Vellore',
+    'Hyderabad',
+    'Pune',
+    'Mumbai',
+  ];
   let pickup = 'Karur';
-  let dest = 'Chennai';
+  let dest = 'Kerala';
 
-  for (const city of cities) {
-    const regexFrom = new RegExp(`from\\s+(${city})`, 'i');
-    if (regexFrom.test(text)) pickup = city;
+  // Check from ... to ... pattern
+  const fromToMatch = text.match(/from\s+([a-zA-Z\s]+?)\s+to\s+([a-zA-Z\s]+?)(?:before|by|with|for|$)/i);
+  if (fromToMatch) {
+    pickup = fromToMatch[1].trim();
+    dest = fromToMatch[2].trim();
+  } else {
+    for (const city of cities) {
+      const regexFrom = new RegExp(`from\\s+(${city})`, 'i');
+      if (regexFrom.test(text)) pickup = city;
 
-    const regexTo = new RegExp(`to\\s+(${city})`, 'i');
-    if (regexTo.test(text)) dest = city;
+      const regexTo = new RegExp(`to\\s+(${city})`, 'i');
+      if (regexTo.test(text)) dest = city;
+    }
   }
 
   // Priority

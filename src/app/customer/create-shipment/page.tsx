@@ -249,7 +249,7 @@ export default function CreateShipmentPage() {
       receiver_postal_code: form.receiverPostalCode,
       destination_lat: form.deliveryLat,
       destination_lng: form.deliveryLng,
-      status: 'PENDING_DISPATCH',
+      status: form.priority === 'CRITICAL' ? 'ACCEPTED' : 'PENDING_REVIEW',
     });
 
     fleetMindStore.createNotification({

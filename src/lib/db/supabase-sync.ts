@@ -42,7 +42,8 @@ export async function initSupabaseStoreSync() {
   isInitialized = true;
 
   try {
-    // 1. Initial Load: Fetch existing records from Supabase tables
+    // 1. Initial Load: Fetch ALL records from Supabase — Supabase is the SINGLE SOURCE OF TRUTH.
+    //    Any data in localStorage is only a fast cache; Supabase always overwrites it.
     const [profilesRes, vehiclesRes, driversRes, shipmentsRes] = await Promise.allSettled([
       supabase.from('profiles').select('*'),
       supabase.from('vehicles').select('*'),
@@ -50,100 +51,190 @@ export async function initSupabaseStoreSync() {
       supabase.from('shipments').select('*').order('created_at', { ascending: false }),
     ]);
 
-    if (profilesRes.status === 'fulfilled' && profilesRes.value.data) {
-      profilesRes.value.data.forEach((p: any) => {
-        const existing = fleetMindStore.getUserByEmail(p.email) || fleetMindStore.getUserByUid(p.firebase_uid);
-        if (!existing) {
-          fleetMindStore.createUser({
-            id: p.id,
-            firebase_uid: p.firebase_uid,
-            email: p.email,
-            full_name: p.full_name,
-            role: p.role,
-            phone: p.phone,
-            avatar_url: p.avatar_url,
-            is_active: p.is_active,
-          });
-        }
-      });
+    // --- PROFILES: Replace local with Supabase truth ---
+    if (profilesRes.status === 'fulfilled' && profilesRes.value.data && profilesRes.value.data.length > 0) {
+      // Merge: Supabase records win. Keep any local-only records that haven't synced yet.
+      const supabaseProfiles = profilesRes.value.data;
+      const supabaseEmails = new Set(supabaseProfiles.map((p: any) => p.email));
+      const supabaseUids = new Set(supabaseProfiles.map((p: any) => p.firebase_uid).filter(Boolean));
+
+      // Get local-only records (not yet in Supabase)
+      const localOnlyUsers = fleetMindStore.getUsers().filter(
+        (u) => !supabaseEmails.has(u.email) && !supabaseUids.has(u.firebase_uid)
+      );
+
+      // Clear and rebuild from Supabase + local-only
+      fleetMindStore.replaceUsers([
+        ...supabaseProfiles.map((p: any) => ({
+          id: p.id,
+          firebase_uid: p.firebase_uid,
+          email: p.email,
+          full_name: p.full_name,
+          role: p.role,
+          phone: p.phone,
+          avatar_url: p.avatar_url,
+          is_active: p.is_active,
+          company_name: p.company_name,
+          created_at: p.created_at,
+        })),
+        ...localOnlyUsers,
+      ]);
+
+      // Push local-only records to Supabase so they appear on other devices
+      for (const u of localOnlyUsers) {
+        syncProfileToSupabase(u);
+      }
+    } else if (profilesRes.status === 'fulfilled' && profilesRes.value.data) {
+      // Supabase is empty — push all local users to Supabase
+      const localUsers = fleetMindStore.getUsers();
+      for (const u of localUsers) {
+        syncProfileToSupabase(u);
+      }
     }
 
+    // --- VEHICLES: Replace local with Supabase truth ---
     if (vehiclesRes.status === 'fulfilled' && vehiclesRes.value.data && vehiclesRes.value.data.length > 0) {
-      vehiclesRes.value.data.forEach((v: any) => {
-        const existing = fleetMindStore.getLorryById(v.id) || fleetMindStore.getLorryById(v.lorry_code);
-        if (!existing) {
-          fleetMindStore.createLorry({
-            id: v.id,
-            lorry_code: v.lorry_code,
-            registration_number: v.registration_number,
-            model: v.model,
-            max_weight_kg: Number(v.max_weight_kg),
-            max_volume_m3: Number(v.max_volume_m3),
-            fuel_efficiency_km_per_l: Number(v.fuel_efficiency_km_per_l),
-            current_lat: Number(v.current_lat),
-            current_lng: Number(v.current_lng),
-            current_address: v.current_address,
-            status: v.status,
-            is_refrigerated: v.is_refrigerated,
-          });
-        }
-      });
+      const supabaseVehicles = vehiclesRes.value.data;
+      const supabaseLorryCodes = new Set(supabaseVehicles.map((v: any) => v.lorry_code));
+      const supabaseVehicleIds = new Set(supabaseVehicles.map((v: any) => v.id));
+
+      const localOnlyLorries = fleetMindStore.getLorries().filter(
+        (l) => !supabaseLorryCodes.has(l.lorry_code) && !supabaseVehicleIds.has(l.id)
+      );
+
+      fleetMindStore.replaceLorries([
+        ...supabaseVehicles.map((v: any) => ({
+          id: v.id,
+          lorry_code: v.lorry_code,
+          registration_number: v.registration_number,
+          model: v.model,
+          max_weight_kg: Number(v.max_weight_kg),
+          max_volume_m3: Number(v.max_volume_m3),
+          fuel_efficiency_km_per_l: Number(v.fuel_efficiency_km_per_l),
+          current_lat: Number(v.current_lat || 13.0827),
+          current_lng: Number(v.current_lng || 80.2707),
+          current_address: v.current_address || 'Chennai Central Logistics Park',
+          status: v.status || 'AVAILABLE',
+          is_refrigerated: v.is_refrigerated || false,
+          assigned_driver_id: v.driver_id || undefined,
+        })),
+        ...localOnlyLorries,
+      ]);
+
+      for (const l of localOnlyLorries) {
+        syncVehicleToSupabase(l);
+      }
+    } else if (vehiclesRes.status === 'fulfilled' && vehiclesRes.value.data) {
+      const localLorries = fleetMindStore.getLorries();
+      for (const l of localLorries) {
+        syncVehicleToSupabase(l);
+      }
     }
 
+    // --- DRIVERS: Replace local with Supabase truth ---
     if (driversRes.status === 'fulfilled' && driversRes.value.data && driversRes.value.data.length > 0) {
-      driversRes.value.data.forEach((d: any) => {
-        const existing = fleetMindStore.getDriverById(d.id);
-        if (!existing) {
-          fleetMindStore.createDriver({
-            id: d.id,
-            name: d.name,
-            phone: d.phone,
-            license_number: d.license_number,
-            current_lat: Number(d.current_lat),
-            current_lng: Number(d.current_lng),
-            availability_status: d.availability_status,
-            shift_start: d.shift_start,
-            shift_end: d.shift_end,
-            performance_score: d.performance_score,
-            total_deliveries: d.total_deliveries,
-          });
-        }
-      });
+      const supabaseDrivers = driversRes.value.data;
+      const supabaseDriverIds = new Set(supabaseDrivers.map((d: any) => d.id));
+
+      const localOnlyDrivers = fleetMindStore.getDrivers().filter(
+        (d) => !supabaseDriverIds.has(d.id)
+      );
+
+      fleetMindStore.replaceDrivers([
+        ...supabaseDrivers.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          phone: d.phone || '+91 00000 00000',
+          email: d.email,
+          license_number: d.license_number || 'PENDING',
+          current_lat: Number(d.current_lat || 13.0827),
+          current_lng: Number(d.current_lng || 80.2707),
+          availability_status: d.availability_status || 'AVAILABLE',
+          shift_start: d.shift_start || '06:00',
+          shift_end: d.shift_end || '18:00',
+          performance_score: d.performance_score,
+          total_deliveries: d.total_deliveries,
+          assigned_lorry_id: d.vehicle_id || undefined,
+        })),
+        ...localOnlyDrivers,
+      ]);
+
+      for (const d of localOnlyDrivers) {
+        syncDriverToSupabase(d);
+      }
+    } else if (driversRes.status === 'fulfilled' && driversRes.value.data) {
+      const localDrivers = fleetMindStore.getDrivers();
+      for (const d of localDrivers) {
+        syncDriverToSupabase(d);
+      }
     }
 
+    // --- SHIPMENTS: Replace local with Supabase truth ---
     if (shipmentsRes.status === 'fulfilled' && shipmentsRes.value.data && shipmentsRes.value.data.length > 0) {
-      shipmentsRes.value.data.forEach((s: any) => {
-        const existing = fleetMindStore.getShipmentById(s.id) || fleetMindStore.getShipmentById(s.shipment_code);
-        if (!existing) {
-          fleetMindStore.createShipment({
-            id: s.id,
-            shipment_code: s.shipment_code,
-            customer_id: s.customer_id,
-            customer_name: s.customer_name,
-            customer_email: s.customer_email,
-            description: s.description,
-            weight_kg: Number(s.weight_kg),
-            volume_m3: Number(s.volume_m3),
-            category: s.category,
-            priority: s.priority,
-            pickup_address: s.pickup_address,
-            pickup_city: s.pickup_city,
-            pickup_lat: Number(s.pickup_lat),
-            pickup_lng: Number(s.pickup_lng),
-            destination_address: s.destination_address,
-            destination_city: s.destination_city,
-            destination_lat: Number(s.destination_lat),
-            destination_lng: Number(s.destination_lng),
-            delivery_deadline: s.delivery_deadline,
-            status: s.status,
-            assigned_lorry_id: s.assigned_lorry_id,
-            assigned_lorry_code: s.assigned_lorry_code,
-            assigned_driver_id: s.assigned_driver_id,
-            assigned_driver_name: s.assigned_driver_name,
-          });
-        }
-      });
+      const supabaseShipments = shipmentsRes.value.data;
+      const supabaseShipmentCodes = new Set(supabaseShipments.map((s: any) => s.shipment_code));
+      const supabaseShipmentIds = new Set(supabaseShipments.map((s: any) => s.id));
+
+      const localOnlyShipments = fleetMindStore.getShipments().filter(
+        (s) => !supabaseShipmentCodes.has(s.shipment_code) && !supabaseShipmentIds.has(s.id)
+      );
+
+      fleetMindStore.replaceShipments([
+        ...supabaseShipments.map((s: any) => ({
+          id: s.id,
+          shipment_code: s.shipment_code,
+          customer_id: s.customer_id || 'cust-direct',
+          customer_name: s.customer_name || 'Commercial Client',
+          customer_email: s.customer_email || '',
+          sender_name: s.sender_name,
+          sender_company: s.sender_company,
+          sender_phone: s.sender_phone,
+          sender_email: s.sender_email,
+          receiver_name: s.receiver_name,
+          receiver_company: s.receiver_company,
+          receiver_phone: s.receiver_phone,
+          receiver_email: s.receiver_email,
+          description: s.description || 'Commercial Freight',
+          weight_kg: Number(s.weight_kg),
+          volume_m3: Number(s.volume_m3 || 1),
+          package_count: Number(s.package_count || 1),
+          fragile: s.fragile || false,
+          category: s.category || 'GENERAL',
+          priority: s.priority || 'MEDIUM',
+          special_instructions: s.special_instructions,
+          pickup_address: s.pickup_address || '',
+          pickup_city: s.pickup_city || '',
+          pickup_lat: Number(s.pickup_lat || 0),
+          pickup_lng: Number(s.pickup_lng || 0),
+          pickup_time: s.pickup_time,
+          destination_address: s.destination_address || '',
+          destination_city: s.destination_city || '',
+          destination_lat: Number(s.destination_lat || 0),
+          destination_lng: Number(s.destination_lng || 0),
+          delivery_deadline: s.delivery_deadline,
+          status: s.status || 'PENDING',
+          assigned_lorry_id: s.assigned_lorry_id,
+          assigned_lorry_code: s.assigned_lorry_code,
+          assigned_driver_id: s.assigned_driver_id,
+          assigned_driver_name: s.assigned_driver_name,
+          created_at: s.created_at,
+          updated_at: s.updated_at,
+        })),
+        ...localOnlyShipments,
+      ]);
+
+      for (const s of localOnlyShipments) {
+        syncShipmentToSupabase(s as Shipment);
+      }
+    } else if (shipmentsRes.status === 'fulfilled' && shipmentsRes.value.data) {
+      const localShipments = fleetMindStore.getShipments();
+      for (const s of localShipments) {
+        syncShipmentToSupabase(s);
+      }
     }
+
+    // Save the merged truth to localStorage for fast offline cache
+    fleetMindStore.saveToLocalStorage();
 
     // 2. Realtime Subscriptions: Listen to changes across all tables via WebSocket
     supabase

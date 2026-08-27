@@ -133,6 +133,34 @@ class FleetMindStore {
     }
   }
 
+  /**
+   * Bulk-replace methods: used by Supabase sync to overwrite local data with cloud truth.
+   * These do NOT trigger individual Supabase syncs (to avoid infinite loops).
+   */
+  public replaceUsers(users: any[]) {
+    this.users = users;
+    this.saveToLocalStorage();
+    this.notify('USERS_SYNCED');
+  }
+
+  public replaceLorries(lorries: any[]) {
+    this.lorries = lorries;
+    this.saveToLocalStorage();
+    this.notify('LORRIES_SYNCED');
+  }
+
+  public replaceDrivers(drivers: any[]) {
+    this.drivers = drivers;
+    this.saveToLocalStorage();
+    this.notify('DRIVERS_SYNCED');
+  }
+
+  public replaceShipments(shipments: any[]) {
+    this.shipments = shipments;
+    this.saveToLocalStorage();
+    this.notify('SHIPMENTS_SYNCED');
+  }
+
   public resetDemoData() {
     this.users = [];
     this.shipments = [];

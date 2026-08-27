@@ -7,6 +7,7 @@ import { fleetMindStore } from '../../../lib/db/store';
 import { ShipmentCategory, ShipmentPriority } from '../../../lib/optimization/types';
 import { parseShipmentWithAI, ParsedShipment } from '../../../lib/ai/groq';
 import { resolveCityCoordinates } from '../../../lib/routing/city-coordinates';
+import { calculateFreightCost, FreightCostBreakdown } from '../../../lib/routing/pricing-calculator';
 import {
   Package,
   Sparkles,
@@ -23,6 +24,11 @@ import {
   ShieldCheck,
   Compass,
   FileText,
+  IndianRupee,
+  Receipt,
+  Truck,
+  TrendingUp,
+  Layers,
 } from 'lucide-react';
 
 export default function CreateShipmentPage() {
@@ -179,6 +185,33 @@ export default function CreateShipmentPage() {
     setActiveMode('manual');
   };
 
+  // Live Cost Estimations
+  const manualCost: FreightCostBreakdown = calculateFreightCost({
+    pickupCity: form.senderCity,
+    destCity: form.receiverCity,
+    pickupLat: form.pickupLat,
+    pickupLng: form.pickupLng,
+    destLat: form.deliveryLat,
+    destLng: form.deliveryLng,
+    weightKg: Number(form.weightKg) || 100,
+    volumeM3: Number(form.volumeM3) || 0.5,
+    category: form.category,
+    priority: form.priority,
+    fragile: form.fragile,
+  });
+
+  const aiCost: FreightCostBreakdown | null = parsedData
+    ? calculateFreightCost({
+        pickupCity: parsedData.pickup_city,
+        destCity: parsedData.destination_city,
+        weightKg: parsedData.weight_kg,
+        volumeM3: parsedData.volume_m3,
+        category: parsedData.category,
+        priority: parsedData.priority,
+        fragile: parsedData.fragile,
+      })
+    : null;
+
   // Confirm and Create from AI directly
   const handleConfirmAiShipment = () => {
     if (!parsedData) return;
@@ -215,6 +248,7 @@ export default function CreateShipmentPage() {
       receiver_company: parsedData.receiver_company || '',
       receiver_email: '',
       receiver_phone: parsedData.receiver_phone || '+91 98410 11111',
+      estimated_cost: aiCost?.totalCost || 2850,
       status: 'PENDING_DISPATCH',
     });
 
@@ -292,6 +326,7 @@ export default function CreateShipmentPage() {
       receiver_state: form.receiverState,
       receiver_postal_code: form.receiverPostalCode,
       receiver_country: form.receiverCountry,
+      estimated_cost: manualCost.totalCost,
       status: 'PENDING_DISPATCH',
     });
 
@@ -449,6 +484,27 @@ export default function CreateShipmentPage() {
                   <p className="font-bold text-slate-900">{new Date(parsedData.delivery_deadline).toLocaleString()}</p>
                 </div>
               </div>
+
+              {/* AI Live Cost Breakdown */}
+              {aiCost && (
+                <div className="bg-white p-4 rounded-2xl border border-violet-200/80 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black uppercase text-slate-800 flex items-center gap-1.5">
+                      <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
+                      Live Commercial Freight Fare Calculation
+                    </span>
+                    <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      Estimated: ₹{aiCost.totalCost.toLocaleString()} (Incl. 18% GST)
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] bg-slate-50 p-2.5 rounded-xl text-slate-600">
+                    <div><span className="text-slate-400 block text-[9px] uppercase font-bold">Corridor Distance</span><strong>{aiCost.distanceKm} km (₹{aiCost.distanceCost})</strong></div>
+                    <div><span className="text-slate-400 block text-[9px] uppercase font-bold">Payload Weight</span><strong>{parsedData.weight_kg} kg (₹{aiCost.weightCost})</strong></div>
+                    <div><span className="text-slate-400 block text-[9px] uppercase font-bold">Base Fare + GST</span><strong>₹{aiCost.baseFare} + ₹{aiCost.gstAmount}</strong></div>
+                    <div><span className="text-slate-400 block text-[9px] uppercase font-bold">SLA Priority</span><strong>{parsedData.priority} ({aiCost.priorityMultiplier}x)</strong></div>
+                  </div>
+                </div>
+              )}
 
               <div className="pt-3 border-t border-violet-200 flex flex-wrap items-center justify-end gap-3">
                 <button
@@ -831,6 +887,63 @@ export default function CreateShipmentPage() {
             </div>
           </div>
 
+          {/* LIVE COMMERCIAL FREIGHT FARE RATE CARD */}
+          <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-950 text-white rounded-3xl p-6 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/15">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">Live Commercial Freight Rate Card</h3>
+                </div>
+                <p className="text-[11px] text-blue-200 mt-0.5">
+                  Dynamic billing based on highway corridor distance, payload mass, bay volume, and priority SLA
+                </p>
+              </div>
+
+              <div className="text-left sm:text-right">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Estimated Freight</span>
+                <div className="text-2xl sm:text-3xl font-black text-emerald-400 flex items-center sm:justify-end gap-1">
+                  <span>₹{manualCost.totalCost.toLocaleString()}</span>
+                </div>
+                <span className="text-[10px] text-blue-200 font-semibold block">Incl. ₹{manualCost.gstAmount.toLocaleString()} GST (18%)</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl space-y-1">
+                <span className="text-[10px] text-blue-200 font-bold uppercase block">Corridor Route</span>
+                <strong className="text-white block font-bold truncate">
+                  {form.senderCity || 'Origin'} ➔ {form.receiverCity || 'Destination'}
+                </strong>
+                <span className="text-[11px] text-emerald-300 font-mono font-bold">{manualCost.distanceKm} km (₹{manualCost.distanceCost})</span>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl space-y-1">
+                <span className="text-[10px] text-blue-200 font-bold uppercase block">Cargo Mass & Volume</span>
+                <strong className="text-white block font-bold">
+                  {form.weightKg || 100} kg • {form.volumeM3 || 0.5} m³
+                </strong>
+                <span className="text-[11px] text-blue-200 font-mono font-bold">₹{manualCost.weightCost + manualCost.volumeCost} payload fee</span>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl space-y-1">
+                <span className="text-[10px] text-blue-200 font-bold uppercase block">Handling Multipliers</span>
+                <strong className="text-white block font-bold">
+                  {form.category} • {form.priority} SLA
+                </strong>
+                <span className="text-[11px] text-amber-300 font-mono font-bold">{manualCost.priorityMultiplier}x SLA rate</span>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl space-y-1">
+                <span className="text-[10px] text-blue-200 font-bold uppercase block">Statutory GST (18%)</span>
+                <strong className="text-white block font-bold">
+                  Subtotal: ₹{manualCost.subtotal.toLocaleString()}
+                </strong>
+                <span className="text-[11px] text-slate-300 font-mono font-bold">+₹{manualCost.gstAmount} tax</span>
+              </div>
+            </div>
+          </div>
+
           {/* Action Bar */}
           <div className="flex items-center justify-end gap-3 pt-2">
             <button
@@ -846,7 +959,7 @@ export default function CreateShipmentPage() {
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-card hover:shadow-card-hover transition flex items-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4" />
-              {isSubmitting ? 'Registering Consignment...' : 'Confirm & Create Consignment'}
+              {isSubmitting ? 'Registering Consignment...' : `Confirm & Place Consignment (₹${manualCost.totalCost.toLocaleString()})`}
             </button>
           </div>
         </form>

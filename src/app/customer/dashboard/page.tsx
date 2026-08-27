@@ -246,8 +246,7 @@ export default function CustomerDashboardPage() {
                     </span>
                   </div>
 
-                  {/* Route Flow: From -> To */}
-                  <div className="bg-slate-50/80 p-3 rounded-xl flex items-center justify-between gap-2 text-xs">
+                  <div className="bg-slate-50/80 p-3 rounded-2xl flex items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2 min-w-0">
                       <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
                       <div className="truncate">
@@ -265,6 +264,16 @@ export default function CustomerDashboardPage() {
                       </div>
                       <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
                     </div>
+                  </div>
+
+                  {/* Freight Cost & Weight Pill */}
+                  <div className="flex items-center justify-between text-xs pt-0.5">
+                    <span className="text-[11px] font-bold text-slate-500">
+                      Payload: <strong className="text-slate-800">{s.weight_kg.toLocaleString()} kg</strong>
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-mono font-black text-xs border border-emerald-200">
+                      ₹{(s.estimated_cost || 2850).toLocaleString()}
+                    </span>
                   </div>
 
                   {/* Progress Bar */}

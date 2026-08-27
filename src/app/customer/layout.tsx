@@ -52,16 +52,16 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
   ];
 
   const mobileBottomNavItems = [
-    { href: '/customer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/customer/dashboard', label: 'Home', icon: LayoutDashboard },
     { href: '/customer/shipments', label: 'Shipments', icon: Package },
-    { href: '/customer/create-shipment', label: 'New Load', icon: PlusCircle, highlight: true },
+    { href: '/customer/create-shipment', label: 'New Load', icon: PlusCircle, isCenterAction: true },
     { href: '/customer/history', label: 'History', icon: Clock },
-    { href: '/customer/support', label: 'Support', icon: HeadphonesIcon },
+    { href: '/customer/profile', label: 'Profile', icon: User },
   ];
 
   return (
     <RoleGuard allowedRoles={['CUSTOMER', 'ADMIN']}>
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col pb-16 md:pb-0 text-slate-900 selection:bg-blue-100">
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col pb-24 md:pb-0 text-slate-900 selection:bg-blue-100">
         {/* Top Navbar */}
         <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-6">
@@ -193,23 +193,39 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
           {children}
         </main>
 
-        {/* Mobile Bottom Navigation Bar - Clean 5 Customer Pages (Alerts removed from bottom nav) */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1.5 grid grid-cols-5 items-center shadow-lg">
+        {/* Native Mobile App Dock Navigation Bar */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 px-3 py-2 flex items-center justify-around shadow-[0_-8px_25px_rgba(0,0,0,0.06)]">
           {mobileBottomNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== '/customer/dashboard' && pathname.startsWith(item.href));
+
+            if (item.isCenterAction) {
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex flex-col items-center -mt-6 group"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 ring-4 ring-white group-hover:scale-105 transition-transform">
+                    <Icon className="w-6 h-6 stroke-[2.5]" />
+                  </div>
+                  <span className="text-[10px] font-black text-blue-700 mt-1 tracking-tight">New Load</span>
+                </Link>
+              );
+            }
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center py-1 px-1 rounded-xl transition text-center ${
-                  isActive ? 'text-blue-600 font-bold bg-blue-50/80' : 'text-slate-500 hover:text-slate-900 font-medium'
+                className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition ${
+                  isActive ? 'text-blue-600 font-black' : 'text-slate-500 hover:text-slate-900 font-medium'
                 }`}
               >
-                <div className="relative flex items-center justify-center">
-                  <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${isActive ? 'stroke-[2.5]' : ''} ${item.highlight && !isActive ? 'text-blue-600' : ''}`} />
+                <div className={`p-1 rounded-xl transition ${isActive ? 'bg-blue-50 text-blue-600 shadow-xs' : ''}`}>
+                  <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
                 </div>
-                <span className="text-[9px] sm:text-[10px] mt-0.5 tracking-tight truncate max-w-full">{item.label}</span>
+                <span className="text-[9px] mt-0.5 tracking-tight">{item.label}</span>
               </Link>
             );
           })}

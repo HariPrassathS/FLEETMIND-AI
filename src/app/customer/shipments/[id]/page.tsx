@@ -46,6 +46,8 @@ import {
   BarChart3,
   QrCode,
   Zap,
+  Receipt,
+  IndianRupee,
 } from 'lucide-react';
 
 const LiveTrackingMapbox = dynamic(
@@ -492,29 +494,13 @@ export default function CustomerTrackingPage() {
             </div>
           </div>
 
-          {/* Digital Consignment Barcode & Scan Pass */}
-          <div className="bg-slate-900 p-3.5 rounded-2xl text-white flex items-center justify-between shadow-sm">
-            <div className="space-y-1">
-              <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
-                <QrCode className="w-3 h-3 text-blue-400" /> Digital Waybill Scan Pass
-              </span>
-              <div className="font-mono text-lg font-bold tracking-[0.25em] text-blue-200">
-                ||| | |||| | ||||| ||| || ||||
-              </div>
-              <span className="text-[10px] font-mono text-slate-300 block">{shipment.shipment_code}</span>
+          {/* Special Instructions */}
+          {shipment.special_instructions && (
+            <div className="p-3.5 bg-amber-50/80 rounded-2xl border border-amber-200 text-amber-900 text-xs">
+              <strong className="block text-[10px] uppercase font-black text-amber-700 mb-0.5">Special Handling Instructions:</strong>
+              {shipment.special_instructions}
             </div>
-            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center font-mono text-[9px] text-center border border-white/10 font-bold p-1">
-              SCAN POD
-            </div>
-          </div>
-
-          <div className="space-y-2 pt-1 text-xs">
-            {shipment.special_instructions && (
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs">
-                <strong>Special Instructions:</strong> {shipment.special_instructions}
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
         {/* Card 4: Assigned Carrier & Pilot Driver */}
@@ -572,6 +558,44 @@ export default function CustomerTrackingPage() {
               </div>
             </>
           )}
+        </div>
+
+        {/* Card 5: Commercial Freight Fare & Billing Breakdown */}
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-6 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-emerald-600" />
+              5. Commercial Freight Invoice & Rate Breakdown
+            </h3>
+            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase">
+              Standard B2B Tariff
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+              <span className="text-[10px] text-slate-400 font-bold uppercase block">Base Intake Fare</span>
+              <strong className="text-slate-900 font-black text-sm">₹450</strong>
+            </div>
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+              <span className="text-[10px] text-slate-400 font-bold uppercase block">Corridor Freight</span>
+              <strong className="text-slate-900 font-black text-sm">
+                ₹{((shipment.estimated_cost ? Math.round(shipment.estimated_cost * 0.5) : 1800)).toLocaleString()}
+              </strong>
+            </div>
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+              <span className="text-[10px] text-slate-400 font-bold uppercase block">Logistics GST (18%)</span>
+              <strong className="text-slate-900 font-black text-sm">
+                ₹{((shipment.estimated_cost ? Math.round(shipment.estimated_cost * 0.18 / 1.18) : 450)).toLocaleString()}
+              </strong>
+            </div>
+            <div className="bg-emerald-50/80 p-3.5 rounded-2xl border border-emerald-200">
+              <span className="text-[10px] text-emerald-700 font-bold uppercase block">Total Freight Cost</span>
+              <strong className="text-emerald-800 font-black text-base">
+                ₹{(shipment.estimated_cost || 3250).toLocaleString()}
+              </strong>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -189,6 +189,12 @@ export default function CustomerShipmentsPage() {
                   </div>
 
                   <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-mono">
+                      ₹{(s.estimated_cost || 2850).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
                     <span>
                       Deadline: {new Date(s.delivery_deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} •{' '}

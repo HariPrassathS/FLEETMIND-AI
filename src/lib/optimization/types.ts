@@ -193,6 +193,7 @@ export interface Shipment {
   delivery_notes?: string;
 
   value_inr?: number;
+  estimated_cost?: number;
   created_at: string;
   updated_at: string;
 }

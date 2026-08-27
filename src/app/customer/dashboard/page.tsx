@@ -32,12 +32,7 @@ export default function CustomerDashboardPage() {
     const loadCustomerData = () => {
       const email = user?.email || 'customer@fleetmind.ai';
       const custShipments = fleetMindStore.getShipmentsByCustomer(email);
-      // Fallback: If 0 shipments, show all active shipments in the corridor for demo clarity
-      if (custShipments.length === 0) {
-        setShipments(fleetMindStore.getShipments().slice(0, 10));
-      } else {
-        setShipments(custShipments);
-      }
+      setShipments(custShipments);
     };
 
     loadCustomerData();

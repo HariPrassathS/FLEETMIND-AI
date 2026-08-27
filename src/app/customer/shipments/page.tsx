@@ -30,11 +30,7 @@ export default function CustomerShipmentsPage() {
     const loadShipments = () => {
       const email = user?.email || 'customer@fleetmind.ai';
       const custShipments = fleetMindStore.getShipmentsByCustomer(email);
-      if (custShipments.length === 0) {
-        setShipments(fleetMindStore.getShipments().slice(0, 15));
-      } else {
-        setShipments(custShipments);
-      }
+      setShipments(custShipments);
     };
 
     loadShipments();

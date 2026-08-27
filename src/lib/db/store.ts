@@ -782,9 +782,9 @@ class FleetMindStore {
     return this.users.find((u) => u.firebase_uid === uid);
   }
 
-  public createUser(user: Partial<UserProfile> & { email: string; full_name: string; role: any }): UserProfile {
+  public createUser(user: Partial<UserProfile> & { email: string; full_name: string; role: any }, skipRemoteSync = false): UserProfile {
     const newUser: UserProfile = {
-      id: `user-${Date.now()}`,
+      id: user.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `user-${Date.now()}`),
       firebase_uid: user.firebase_uid || `uid-${Date.now()}`,
       email: user.email,
       full_name: user.full_name,
@@ -792,13 +792,15 @@ class FleetMindStore {
       avatar_url: user.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
       is_active: user.is_active !== undefined ? user.is_active : true,
       phone: user.phone || '+91 98000 00000',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: user.created_at || new Date().toISOString(),
+      updated_at: user.updated_at || new Date().toISOString(),
     };
     this.users.push(newUser);
     this.logAudit(newUser.email, newUser.role, 'USER_CREATED', 'USER', newUser.id, null, newUser);
     this.notify('USER_CREATED', newUser);
-    syncProfileToSupabase(newUser);
+    if (!skipRemoteSync) {
+      syncProfileToSupabase(newUser);
+    }
     return newUser;
   }
 
@@ -964,10 +966,10 @@ class FleetMindStore {
     return this.shipments.find((s) => s.id === id || s.shipment_code === id);
   }
 
-  public createShipment(shipment: Partial<Shipment> & { description: string; weight_kg: number }): Shipment {
+  public createShipment(shipment: Partial<Shipment> & { description: string; weight_kg: number }, skipRemoteSync = false): Shipment {
     const count = this.shipments.length + 1;
     const newShipment: Shipment = {
-      id: shipment.id || `shipment-${Date.now()}`,
+      id: shipment.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `shipment-${Date.now()}`),
       shipment_code: shipment.shipment_code || `S-${1000 + count}`,
       customer_id: shipment.customer_id || 'cust-direct',
       customer_name: shipment.customer_name || 'Commercial Freight Client',
@@ -1013,13 +1015,15 @@ class FleetMindStore {
       receiver_postal_code: shipment.receiver_postal_code,
       receiver_country: shipment.receiver_country || 'India',
       special_instructions: shipment.special_instructions,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: shipment.created_at || new Date().toISOString(),
+      updated_at: shipment.updated_at || new Date().toISOString(),
     };
     this.shipments.unshift(newShipment);
     this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'SHIPMENT_CREATED', 'SHIPMENT', newShipment.id, null, newShipment);
     this.notify('SHIPMENT_CREATED', newShipment);
-    syncShipmentToSupabase(newShipment);
+    if (!skipRemoteSync) {
+      syncShipmentToSupabase(newShipment);
+    }
     return newShipment;
   }
 
@@ -1304,14 +1308,16 @@ class FleetMindStore {
     return shipment;
   }
 
-  public updateShipmentStatus(shipmentId: string, status: Shipment['status']): Shipment | null {
+  public updateShipmentStatus(shipmentId: string, status: Shipment['status'], skipRemoteSync = false): Shipment | null {
     const s = this.shipments.find((x) => x.id === shipmentId || x.shipment_code === shipmentId);
     if (!s) return null;
     s.status = status;
     s.updated_at = new Date().toISOString();
     this.saveToLocalStorage();
     this.notify('SHIPMENT_UPDATED', s);
-    syncShipmentToSupabase(s);
+    if (!skipRemoteSync) {
+      syncShipmentToSupabase(s);
+    }
     return s;
   }
 
@@ -1335,7 +1341,7 @@ class FleetMindStore {
     return this.lorries.find((l) => l.id === id || l.lorry_code === id);
   }
 
-  public createLorry(lorry: Partial<Lorry> & { lorry_code: string; registration_number: string }): Lorry {
+  public createLorry(lorry: Partial<Lorry> & { lorry_code: string; registration_number: string }, skipRemoteSync = false): Lorry {
     const newLorry: Lorry = {
       id: lorry.id || `lorry-${Date.now()}`,
       lorry_code: lorry.lorry_code,
@@ -1350,17 +1356,19 @@ class FleetMindStore {
       status: lorry.status || 'AVAILABLE',
       driver_id: lorry.driver_id || null,
       is_refrigerated: Boolean(lorry.is_refrigerated),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: lorry.created_at || new Date().toISOString(),
+      updated_at: lorry.updated_at || new Date().toISOString(),
     };
     this.lorries.push(newLorry);
     this.logAudit('admin@fleetmind.ai', 'ADMIN', 'LORRY_CREATED', 'LORRY', newLorry.id, null, newLorry);
     this.notify('LORRY_CREATED', newLorry);
-    syncVehicleToSupabase(newLorry);
+    if (!skipRemoteSync) {
+      syncVehicleToSupabase(newLorry);
+    }
     return newLorry;
   }
 
-  public updateLorryStatus(lorryId: string, status: Lorry['status']): Lorry | null {
+  public updateLorryStatus(lorryId: string, status: Lorry['status'], skipRemoteSync = false): Lorry | null {
     const l = this.lorries.find((x) => x.id === lorryId || x.lorry_code === lorryId);
     if (!l) return null;
     const before = { ...l };
@@ -1368,7 +1376,9 @@ class FleetMindStore {
     l.updated_at = new Date().toISOString();
     this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'LORRY_STATUS_UPDATED', 'LORRY', l.id, before, l);
     this.notify('LORRY_UPDATED', l);
-    syncVehicleToSupabase(l);
+    if (!skipRemoteSync) {
+      syncVehicleToSupabase(l);
+    }
     if (status === 'UNAVAILABLE' || status === 'MAINTENANCE') {
       this.createAlert({
         type: 'LORRY_BREAKDOWN',
@@ -1405,8 +1415,8 @@ class FleetMindStore {
     return this.drivers.find((d) => d.id === id || d.user_id === id);
   }
 
-  public createDriver(driver: Partial<Driver> & { name: string; phone: string; license_number: string; email?: string; password?: string }): Driver {
-    const driverId = driver.id || `driver-${Date.now()}`;
+  public createDriver(driver: Partial<Driver> & { name: string; phone: string; license_number: string; email?: string; password?: string }, skipRemoteSync = false): Driver {
+    const driverId = driver.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `driver-${Date.now()}`);
     const email = driver.email || `driver.${driver.name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'pilot'}@fleetmind.ai`;
 
     // 1. Create Driver UserProfile so they can authenticate into the Driver Cockpit portal
@@ -1419,7 +1429,7 @@ class FleetMindStore {
         role: 'DRIVER',
         is_active: true,
         is_verified: true,
-      });
+      }, skipRemoteSync);
     }
 
     // 2. Create Firebase Auth user in background if password provided
@@ -1440,6 +1450,7 @@ class FleetMindStore {
       user_id: userProfile.id,
       name: driver.name,
       phone: driver.phone,
+      email,
       license_number: driver.license_number,
       current_lat: driver.current_lat || 13.0827,
       current_lng: driver.current_lng || 80.2707,
@@ -1447,25 +1458,29 @@ class FleetMindStore {
       shift_start: driver.shift_start || '06:00',
       shift_end: driver.shift_end || '18:00',
       assigned_lorry_id: driver.assigned_lorry_id || null,
-      performance_score: 95,
-      total_deliveries: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      performance_score: driver.performance_score || 95,
+      total_deliveries: driver.total_deliveries || 0,
+      created_at: driver.created_at || new Date().toISOString(),
+      updated_at: driver.updated_at || new Date().toISOString(),
     };
     this.drivers.push(newDriver);
     this.logAudit('admin@fleetmind.ai', 'ADMIN', 'DRIVER_CREATED', 'DRIVER', newDriver.id, null, newDriver);
     this.notify('DRIVER_CREATED', newDriver);
-    syncDriverToSupabase(newDriver);
+    if (!skipRemoteSync) {
+      syncDriverToSupabase(newDriver);
+    }
     return newDriver;
   }
 
-  public updateDriverStatus(driverId: string, status: Driver['availability_status']): Driver | null {
+  public updateDriverStatus(driverId: string, status: Driver['availability_status'], skipRemoteSync = false): Driver | null {
     const d = this.drivers.find((x) => x.id === driverId);
     if (!d) return null;
     d.availability_status = status;
     d.updated_at = new Date().toISOString();
     this.notify('DRIVER_UPDATED', d);
-    syncDriverToSupabase(d);
+    if (!skipRemoteSync) {
+      syncDriverToSupabase(d);
+    }
     return d;
   }
 

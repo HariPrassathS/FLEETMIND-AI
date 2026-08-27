@@ -273,7 +273,7 @@ export async function initSupabaseStoreSync() {
               destination_lng: Number(s.destination_lng),
               delivery_deadline: s.delivery_deadline,
               status: s.status,
-            });
+            }, true); // skipRemoteSync = true to prevent echo loop
           }
         } else if (payload.eventType === 'UPDATE') {
           const s = payload.new as any;
@@ -315,7 +315,7 @@ export async function initSupabaseStoreSync() {
               max_volume_m3: Number(v.max_volume_m3),
               fuel_efficiency_km_per_l: Number(v.fuel_efficiency_km_per_l),
               status: v.status,
-            });
+            }, true);
           }
         } else if (payload.eventType === 'UPDATE') {
           const v = payload.new as any;
@@ -346,7 +346,7 @@ export async function initSupabaseStoreSync() {
               phone: d.phone,
               license_number: d.license_number,
               availability_status: d.availability_status,
-            });
+            }, true);
           }
         } else if (payload.eventType === 'UPDATE') {
           const d = payload.new as any;

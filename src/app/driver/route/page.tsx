@@ -63,10 +63,13 @@ export default function DriverRoutePage() {
            (assignedLorry && (s.assigned_lorry_id === assignedLorry.id || s.assigned_lorry_code === assignedLorry.lorry_code))
   );
 
-  const activeShipment = myShipments.find((s) => s.status === 'IN_TRANSIT' || s.status === 'ASSIGNED' || s.status === 'PICKED_UP' || s.status === 'ACCEPTED') || myShipments[0] || null;
+  const activeShipmentsList = myShipments.filter(s => ['IN_TRANSIT', 'ASSIGNED', 'PICKED_UP', 'ACCEPTED'].includes(s.status));
+  const activeShipment = activeShipmentsList[0] || myShipments[0] || null;
 
-  // Build real dynamic stops from driver's active shipments
-  const dynamicStops = myShipments.flatMap((s, sIdx) => [
+  // Build real dynamic stops from driver's active shipments ONLY
+  const shipmentsToRoute = activeShipmentsList.length > 0 ? activeShipmentsList : (activeShipment && activeShipment.status !== 'DELIVERED' ? [activeShipment] : []);
+
+  const dynamicStops = shipmentsToRoute.flatMap((s, sIdx) => [
     {
       id: `stop-pick-${s.id}`,
       shipment_id: s.id,

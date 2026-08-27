@@ -62,6 +62,7 @@ export function LiveFleetMap({
   const mapInstanceRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
   const routesLayerRef = useRef<any>(null);
+  const hasInitialFleetFitRef = useRef(false);
 
   const [activeDrawerLorry, setActiveDrawerLorry] = useState<Lorry | null>(null);
   const [filter, setFilter] = useState<FleetFilter>('ALL');
@@ -320,9 +321,10 @@ export function LiveFleetMap({
         `);
       });
 
-      // Fit bounds
-      if (bounds.length > 0 && !activeDrawerLorry) {
+      // Fit bounds only once upon initial vehicle load or when search is typed, NEVER repeatedly on periodic GPS ticks!
+      if (bounds.length > 0 && !activeDrawerLorry && (!hasInitialFleetFitRef.current || searchQuery.trim() !== '')) {
         mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 10 });
+        hasInitialFleetFitRef.current = true;
       }
     });
 
@@ -372,60 +374,80 @@ export function LiveFleetMap({
         </div>
       </div>
 
-      {/* Actual Real Leaflet Container */}
+      {/* Main Leaflet Map Container */}
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-      {/* Floating Active Lorry Detail Drawer */}
+      {/* Floating Map Zoom & Recenter Controls */}
+      <div className="absolute bottom-4 right-4 z-[400] flex flex-col gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200 shadow-xl">
+        <button
+          onClick={() => {
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.zoomIn();
+            }
+          }}
+          className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-sm flex items-center justify-center transition"
+          title="Zoom In"
+        >
+          +
+        </button>
+        <button
+          onClick={() => {
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.zoomOut();
+            }
+          }}
+          className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-sm flex items-center justify-center transition"
+          title="Zoom Out"
+        >
+          −
+        </button>
+        <button
+          onClick={() => {
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.setView([10.8, 77.8], 8);
+            }
+          }}
+          className="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs flex items-center justify-center transition"
+          title="Recenter Tamil Nadu Corridor"
+        >
+          🎯
+        </button>
+      </div>
+
+      {/* Bottom Drawer for Selected Lorry */}
       {activeDrawerLorry && (
-        <div className="absolute bottom-4 left-4 right-4 sm:right-auto sm:w-96 z-[500] bg-white/95 backdrop-blur-md rounded-3xl p-5 border border-slate-200 shadow-2xl space-y-4 animate-in slide-in-from-bottom-5">
+        <div className="absolute bottom-4 left-4 right-4 sm:right-auto sm:w-80 z-[400] bg-white/95 backdrop-blur-md rounded-3xl p-4 shadow-2xl border border-slate-200 animate-in slide-in-from-bottom space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                <Truck className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-black text-slate-900">{activeDrawerLorry.lorry_code}</h4>
-                <span className="text-[10px] text-slate-400 font-mono block">{activeDrawerLorry.registration_number}</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="font-black text-sm text-slate-900">{activeDrawerLorry.lorry_code}</span>
+              <span className="text-[10px] font-mono text-slate-400 font-bold">{activeDrawerLorry.registration_number}</span>
             </div>
             <button
               onClick={() => setActiveDrawerLorry(null)}
-              className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+              className="p-1 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
           <div className="space-y-2 text-xs">
-            <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-2xl">
-              <span className="font-bold text-slate-500">Model</span>
-              <span className="font-black text-slate-900">{activeDrawerLorry.model}</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div className="p-2.5 bg-slate-50 rounded-2xl">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Max Payload</span>
-                <strong className="text-sm font-black text-slate-900">
-                  {activeDrawerLorry.max_weight_kg.toLocaleString()} kg
-                </strong>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-slate-50 p-2 rounded-xl">
+                <span className="text-[10px] text-slate-400 font-bold block">Assigned Pilot</span>
+                <span className="font-bold text-slate-800 truncate block">
+                  {activeDrawerLorry.assigned_driver_name || 'Standby Pilot'}
+                </span>
               </div>
-              <div className="p-2.5 bg-slate-50 rounded-2xl">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Volume</span>
-                <strong className="text-sm font-black text-slate-900">{activeDrawerLorry.max_volume_m3} m³</strong>
+              <div className="bg-slate-50 p-2 rounded-xl">
+                <span className="text-[10px] text-slate-400 font-bold block">Model / Rating</span>
+                <span className="font-bold text-slate-800 truncate block">{activeDrawerLorry.model}</span>
               </div>
             </div>
 
-            {/* Active Route Waypoints */}
             {activeRouteForDrawer && activeRouteForDrawer.stops.length >= 2 && (
-              <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-2xl space-y-2">
-                <div className="flex items-center justify-between text-[11px] font-black text-blue-900">
-                  <span className="flex items-center gap-1.5">
-                    <Navigation className="w-3.5 h-3.5 text-blue-600" />
-                    Active Road Highway Corridor
-                  </span>
-                  <span className="text-xs text-blue-700 font-bold">{activeRouteForDrawer.total_distance_km} km</span>
-                </div>
-                <div className="flex items-center justify-between text-xs font-bold text-slate-800 bg-white/80 p-2 rounded-xl border border-blue-200/50">
+              <div className="p-2.5 bg-blue-50/60 rounded-2xl border border-blue-100 space-y-1">
+                <span className="text-[10px] font-bold text-blue-700 uppercase block">Active Highway Leg</span>
+                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
                   <span className="truncate max-w-[120px]">📍 {activeRouteForDrawer.stops[0].address.split(',')[0]}</span>
                   <ArrowRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                   <span className="truncate max-w-[120px]">🏁 {activeRouteForDrawer.stops[activeRouteForDrawer.stops.length - 1].address.split(',')[0]}</span>

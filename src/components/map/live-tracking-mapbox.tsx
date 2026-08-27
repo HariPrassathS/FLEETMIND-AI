@@ -85,12 +85,6 @@ export function LiveTrackingMapbox({
   height = '480px',
   showControls = true,
 }: LiveTrackingMapboxProps) {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersLayerRef = useRef<any>(null);
-  const routePolylineRef = useRef<any>(null);
-  const simulationTimerRef = useRef<NodeJS.Timeout | null>(null);
-
   // Dynamic geocoding fallback for origin and destination
   const originGeo = resolveCityCoordinates(rawOrigin.city || rawOrigin.address, {
     lat: rawOrigin.lat,
@@ -138,15 +132,24 @@ export function LiveTrackingMapbox({
     etaText || `${Math.max(1, Math.round(remainingKm / 50))}h ${Math.round((remainingKm % 50) * 1.2)}m`
   );
 
-  // 1. Fetch Real Road Geometry
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markersLayerRef = useRef<any>(null);
+  const routePolylineRef = useRef<any>(null);
+  const driverMarkerRef = useRef<any>(null);
+  const hasFittedBoundsRef = useRef(false);
+  const simulationTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 1. Fetch High-Resolution Turn-by-Turn Road Route Geometry
   useEffect(() => {
     let cancelled = false;
+    hasFittedBoundsRef.current = false;
 
     async function fetchRoadRoute() {
       try {
-        const originLngLat: LngLat = [origin.lng, origin.lat];
-        const destLngLat: LngLat = [destination.lng, destination.lat];
-        const wpLngLats = waypoints.map((w) => [w.lng, w.lat] as LngLat);
+        const originLngLat: [number, number] = [origin.lng, origin.lat];
+        const destLngLat: [number, number] = [destination.lng, destination.lat];
+        const wpLngLats: [number, number][] = waypoints.map((w) => [w.lng, w.lat]);
 
         const res = await fetch('/api/routing/directions', {
           method: 'POST',
@@ -212,8 +215,8 @@ export function LiveTrackingMapbox({
 
       const map = L.map(mapContainerRef.current, {
         center: [(origin.lat + destination.lat) / 2, (origin.lng + destination.lng) / 2],
-        zoom: 6,
-        zoomControl: true,
+        zoom: 7,
+        zoomControl: false,
         scrollWheelZoom: true,
       });
 
@@ -231,7 +234,7 @@ export function LiveTrackingMapbox({
       setIsLeafletReady(true);
 
       setTimeout(() => {
-        if (mapInstanceRef.current) {
+        if (mapInstanceRef.current && !hasFittedBoundsRef.current) {
           mapInstanceRef.current.invalidateSize();
           mapInstanceRef.current.fitBounds(
             [
@@ -240,6 +243,7 @@ export function LiveTrackingMapbox({
             ],
             { padding: [50, 50], maxZoom: 14 }
           );
+          hasFittedBoundsRef.current = true;
         }
       }, 300);
     });
@@ -253,7 +257,7 @@ export function LiveTrackingMapbox({
     };
   }, []);
 
-  // 3. Render Markers & Polyline when data or coords change
+  // 3. Render Markers & Polyline when data or coords change (WITHOUT forcing fitBounds on every update)
   useEffect(() => {
     if (!isLeafletReady || !mapInstanceRef.current || !markersLayerRef.current) return;
 
@@ -320,7 +324,7 @@ export function LiveTrackingMapbox({
           iconAnchor: [20, 20],
         });
 
-        L.marker([driverPos.lat, driverPos.lng], { icon: driverIcon }).addTo(markersLayer);
+        driverMarkerRef.current = L.marker([driverPos.lat, driverPos.lng], { icon: driverIcon }).addTo(markersLayer);
       }
 
       // Draw Route Polyline
@@ -335,13 +339,17 @@ export function LiveTrackingMapbox({
           opacity: 0.85,
         }).addTo(map);
 
-        map.fitBounds(
-          [
-            [origin.lat, origin.lng],
-            [destination.lat, destination.lng],
-          ],
-          { padding: [50, 50], maxZoom: 14 }
-        );
+        // ONLY perform fitBounds once upon initial road route calculation, NEVER on subsequent user zooms or driver position updates!
+        if (!hasFittedBoundsRef.current) {
+          map.fitBounds(
+            [
+              [origin.lat, origin.lng],
+              [destination.lat, destination.lng],
+            ],
+            { padding: [50, 50], maxZoom: 14 }
+          );
+          hasFittedBoundsRef.current = true;
+        }
       }
     });
   }, [origin.lat, origin.lng, destination.lat, destination.lng, routeCoordinates, isLeafletReady, driverPos, status, vehicleCode]);

@@ -71,6 +71,12 @@ class FleetMindStore {
   constructor() {
     // 1. Load instantly from localStorage so refresh never deletes data
     if (typeof window !== 'undefined') {
+      // ONE-TIME FORCE WIPE TO CLEAR STUCK MOCK DATA FROM BROWSER CACHE
+      if (!localStorage.getItem('prod_v1_wipe_complete')) {
+        localStorage.clear();
+        localStorage.setItem('prod_v1_wipe_complete', 'true');
+      }
+
       this.loadFromLocalStorage();
       setTimeout(() => {
         initSupabaseStoreSync();

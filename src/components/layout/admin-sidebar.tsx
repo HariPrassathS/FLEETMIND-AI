@@ -14,8 +14,14 @@ import {
   Activity,
   BarChart,
   Shield,
+  LogOut,
+  X,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../lib/auth/auth-context';
 import { BrandLogo } from '../brand/brand-logo';
+import { UserAvatar } from '../brand/user-avatar';
+import { useSidebar } from './sidebar-context';
 
 const ADMIN_LINKS = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -29,13 +35,30 @@ const ADMIN_LINKS = [
   { href: '/admin/reports', label: 'Operational Reports', icon: BarChart },
 ];
 
-export function AdminSidebar() {
-  const pathname = usePathname();
+interface AdminSidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
 
-  return (
-    <aside className="w-64 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 h-screen sticky top-0">
+export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const sidebar = useSidebar();
+
+  const isDrawerOpen = isOpen !== undefined ? isOpen : sidebar.isMobileOpen;
+  const handleClose = onClose || sidebar.closeMobile;
+
+  const handleLogout = async () => {
+    handleClose();
+    await logout();
+    router.push('/login');
+  };
+
+  const sidebarContent = (
+    <div className="flex flex-col justify-between h-full">
       <div>
-        <div className="px-5 py-4.5 border-b border-slate-100">
+        <div className="px-5 py-4 border-b border-slate-100 sticky top-0 bg-white z-10 flex items-center justify-between">
           <BrandLogo
             variant="full"
             size="md"
@@ -43,6 +66,15 @@ export function AdminSidebar() {
             badge="ADMIN"
             badgeColor="purple"
           />
+          {onClose && (
+            <button
+              onClick={handleClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 md:hidden transition"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         <nav className="p-3 space-y-1">
@@ -54,9 +86,10 @@ export function AdminSidebar() {
               <Link
                 key={link.href}
                 href={link.href}
+                onClick={handleClose}
                 className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
                   isActive
-                    ? 'bg-purple-600 text-white shadow-sm'
+                    ? 'bg-purple-600 text-white shadow-sm font-bold'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
@@ -68,14 +101,53 @@ export function AdminSidebar() {
         </nav>
       </div>
 
-      <div className="p-4 border-t border-slate-100">
-        <div className="bg-purple-50 border border-purple-200/70 rounded-xl p-3 text-xs space-y-1">
-          <span className="text-[11px] font-bold text-purple-900">Privileged Environment</span>
-          <p className="text-[10px] text-purple-700 leading-tight">
-            Administrative actions are cryptographically logged to the immutable audit ledger.
-          </p>
+      <div className="p-3 border-t border-slate-100 space-y-2.5 bg-white">
+        {/* User Profile Card */}
+        <div className="flex items-center gap-2.5 px-2 py-1.5 bg-slate-50 rounded-xl border border-slate-100">
+          <UserAvatar
+            src={user?.avatar_url}
+            name={user?.full_name}
+            email={user?.email}
+            size="sm"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold text-slate-800 truncate">{user?.full_name || 'System Admin'}</p>
+            <p className="text-[10px] text-slate-500 truncate">{user?.email || 'admin@fleetmind.ai'}</p>
+          </div>
         </div>
+
+        {/* Dedicated Sign Out Button */}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200/80 transition"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Sign Out</span>
+        </button>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sticky Sidebar */}
+      <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col justify-between shrink-0 h-screen sticky top-0 z-20 overflow-y-auto">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Slide-Over Drawer */}
+      {isDrawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex animate-in fade-in duration-200">
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
+            onClick={handleClose}
+            aria-hidden="true"
+          />
+          <div className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-300 overflow-y-auto">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

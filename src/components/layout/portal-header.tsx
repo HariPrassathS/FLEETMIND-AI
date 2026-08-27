@@ -18,19 +18,25 @@ import {
   UserCheck,
   Flame,
   Zap,
+  Menu,
 } from 'lucide-react';
 import { fleetMindStore } from '../../lib/db/store';
 import { GlobalSearchDialog } from '../search/global-search-dialog';
 import { UserAvatar } from '../brand/user-avatar';
+import { useSidebar } from './sidebar-context';
 
 interface PortalHeaderProps {
   title: string;
   subtitle?: string;
+  onMenuToggle?: () => void;
 }
 
-export function PortalHeader({ title, subtitle }: PortalHeaderProps) {
+export function PortalHeader({ title, subtitle, onMenuToggle }: PortalHeaderProps) {
   const { user, role, switchRoleDemo, logout, getRoleDashboardPath } = useAuth();
   const router = useRouter();
+  const sidebar = useSidebar();
+
+  const handleMenuClick = onMenuToggle || sidebar.toggleMobile;
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
@@ -57,10 +63,19 @@ export function PortalHeader({ title, subtitle }: PortalHeaderProps) {
   return (
     <>
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-8 py-3 flex items-center justify-between">
-        {/* Left: Title & Subtitle */}
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">{title}</h1>
-          {subtitle && <p className="text-xs text-slate-500 hidden sm:block mt-0.5">{subtitle}</p>}
+        {/* Left: Mobile Menu Trigger + Title & Subtitle */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            onClick={handleMenuClick}
+            className="p-2 -ml-1 text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 md:hidden transition flex items-center justify-center"
+            aria-label="Toggle navigation drawer"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-base sm:text-xl font-bold text-slate-900 leading-tight truncate">{title}</h1>
+            {subtitle && <p className="text-xs text-slate-500 hidden sm:block mt-0.5">{subtitle}</p>}
+          </div>
         </div>
 
         {/* Right Actions */}

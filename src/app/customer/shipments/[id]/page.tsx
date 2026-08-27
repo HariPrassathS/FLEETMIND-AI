@@ -15,6 +15,7 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '../../../../lib/auth/auth-context';
 import { fleetMindStore } from '../../../../lib/db/store';
 import { Shipment, Lorry, Driver } from '../../../../lib/optimization/types';
+import { resolveCityCoordinates } from '../../../../lib/routing/city-coordinates';
 import {
   Package,
   Truck,
@@ -50,7 +51,7 @@ const LiveTrackingMapbox = dynamic(
     ssr: false,
     loading: () => (
       <div className="h-[480px] bg-slate-50 animate-pulse rounded-3xl border border-slate-200 flex items-center justify-center text-xs text-slate-400 font-bold">
-        Initializing Mapbox Live GPS Vector Engine...
+        Initializing Live Highway Navigation Map...
       </div>
     ),
   }
@@ -113,7 +114,23 @@ export default function CustomerTrackingPage() {
 
   const isDelivered = shipment.status === 'DELIVERED';
   const isInTransit = shipment.status === 'IN_TRANSIT';
-  const isAssigned = Boolean(shipment.assigned_lorry_id || shipment.status === 'ASSIGNED');
+  const isAssigned = Boolean(
+    shipment.assigned_lorry_id ||
+    shipment.status === 'ASSIGNED' ||
+    shipment.status === 'IN_TRANSIT' ||
+    shipment.status === 'DELIVERED' ||
+    shipment.status === 'PICKED_UP' ||
+    shipment.status === 'OUT_FOR_DELIVERY'
+  );
+
+  const pickupGeo = resolveCityCoordinates(shipment.pickup_city || shipment.pickup_address, {
+    lat: shipment.pickup_lat || 10.7905,
+    lng: shipment.pickup_lng || 78.7047,
+  });
+  const destGeo = resolveCityCoordinates(shipment.destination_city || shipment.destination_address, {
+    lat: shipment.destination_lat || 28.6139,
+    lng: shipment.destination_lng || 77.2090,
+  });
 
   // Timeline events mapping
   const timelineSteps = [
@@ -260,16 +277,16 @@ export default function CustomerTrackingPage() {
             <div>
               <span className="text-[10px] text-slate-400 font-bold block">Assigned Carrier</span>
               <strong className="text-slate-900">
-                {shipment.status === 'PENDING_REVIEW' || shipment.status === 'PENDING'
-                  ? 'Pending Assignment'
-                  : (shipment.assigned_lorry_code || lorry?.lorry_code || 'Assigned Carrier')}
+                {!isAssigned
+                  ? 'Pending Dispatch Approval'
+                  : (shipment.assigned_lorry_code || lorry?.lorry_code || 'Allocated Carrier')}
               </strong>
             </div>
             <div>
               <span className="text-[10px] text-slate-400 font-bold block">Pilot Driver</span>
               <strong className="text-slate-900">
-                {shipment.status === 'PENDING_REVIEW' || shipment.status === 'PENDING'
-                  ? 'Awaiting Dispatch Review'
+                {!isAssigned
+                  ? 'Awaiting Dispatch Allocation'
                   : (shipment.assigned_driver_name || driver?.name || 'Assigned Driver')}
               </strong>
             </div>
@@ -291,45 +308,45 @@ export default function CustomerTrackingPage() {
         </div>
       </div>
 
-      {/* MAPBOX GL JS REAL-TIME DRIVER GPS MAP */}
+      {/* LEAFLET.JS REAL-TIME DRIVER GPS MAP */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-base font-black text-slate-900 font-heading">
-              Mapbox Live Driver GPS Navigation Map
+              Live Highway Navigation & Telemetry Map
             </h2>
             <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase border border-emerald-200">
               ● Hardware GPS Synced (Driver Mobile)
             </span>
           </div>
           <span className="text-xs text-slate-500 font-semibold">
-            {isInTransit ? 'Live Vehicle Movement Active on Highway' : isDelivered ? 'Cargo Safely Delivered' : 'Scheduled for Dispatch'}
+            {isInTransit ? 'Live Vehicle Movement Active on Highway' : isDelivered ? 'Cargo Safely Delivered' : !isAssigned ? 'Awaiting Dispatch Approval' : 'Scheduled for Dispatch'}
           </span>
         </div>
 
         <LiveTrackingMapbox
           origin={{
-            lat: shipment.pickup_lat,
-            lng: shipment.pickup_lng,
-            city: shipment.pickup_city,
+            lat: pickupGeo.lat,
+            lng: pickupGeo.lng,
+            city: shipment.pickup_city || pickupGeo.cityName,
             address: shipment.pickup_address,
           }}
           destination={{
-            lat: shipment.destination_lat,
-            lng: shipment.destination_lng,
-            city: shipment.destination_city,
+            lat: destGeo.lat,
+            lng: destGeo.lng,
+            city: shipment.destination_city || destGeo.cityName,
             address: shipment.destination_address,
           }}
           initialDriverLocation={{
-            lat: driver?.current_lat && driver.current_lat !== 13.0827 ? driver.current_lat : (lorry?.current_lat && lorry.current_lat !== 13.0827 ? lorry.current_lat : (shipment.status === 'IN_TRANSIT' ? 12.8350 : shipment.pickup_lat)),
-            lng: driver?.current_lng && driver.current_lng !== 80.2707 ? driver.current_lng : (lorry?.current_lng && lorry.current_lng !== 80.2707 ? lorry.current_lng : (shipment.status === 'IN_TRANSIT' ? 78.8500 : shipment.pickup_lng)),
+            lat: driver?.current_lat && driver.current_lat !== 13.0827 ? driver.current_lat : (lorry?.current_lat && lorry.current_lat !== 13.0827 ? lorry.current_lat : (shipment.status === 'IN_TRANSIT' ? (pickupGeo.lat + destGeo.lat) / 2 : pickupGeo.lat)),
+            lng: driver?.current_lng && driver.current_lng !== 80.2707 ? driver.current_lng : (lorry?.current_lng && lorry.current_lng !== 80.2707 ? lorry.current_lng : (shipment.status === 'IN_TRANSIT' ? (pickupGeo.lng + destGeo.lng) / 2 : pickupGeo.lng)),
             speed_kmh: shipment.status === 'IN_TRANSIT' ? 42 : 0,
             heading_deg: 248,
           }}
           status={shipment.status}
-          driverName={shipment.assigned_driver_name || driver?.name || 'Murugan Selvam'}
+          driverName={shipment.assigned_driver_name || driver?.name || 'Commercial Pilot'}
           driverPhone={driver?.phone || '+91 98401 22334'}
-          vehicleCode={shipment.assigned_lorry_code || lorry?.lorry_code || 'L-11 (Tata 1109 LPT)'}
+          vehicleCode={shipment.assigned_lorry_code || lorry?.lorry_code || 'L-01'}
           etaText={new Date(shipment.delivery_deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           deadline={shipment.delivery_deadline}
           shipmentId={shipment.id}
@@ -349,15 +366,15 @@ export default function CustomerTrackingPage() {
           <div className="grid grid-cols-2 gap-3 text-xs pt-1">
             <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
               <span className="text-[10px] text-slate-400 font-bold uppercase block">Company / Business</span>
-              <strong className="text-slate-900 text-sm font-bold">{shipment.sender_company || shipment.customer_name || 'Standard Shipper'}</strong>
+              <strong className="text-slate-900 text-sm font-bold">{shipment.sender_company || shipment.customer_name || 'Commercial Shipper'}</strong>
             </div>
             <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
               <span className="text-[10px] text-slate-400 font-bold uppercase block">Contact Person</span>
-              <strong className="text-slate-900 text-sm font-bold">{shipment.sender_name}</strong>
+              <strong className="text-slate-900 text-sm font-bold">{shipment.sender_name || 'Shipper Representative'}</strong>
             </div>
             <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
               <span className="text-[10px] text-slate-400 font-bold uppercase block">Contact Phone</span>
-              <strong className="text-slate-900 text-sm font-bold">{shipment.sender_phone || '+91 98410 44556'}</strong>
+              <strong className="text-slate-900 text-sm font-bold">{shipment.sender_phone || '+91 98410 00000'}</strong>
             </div>
             <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
               <span className="text-[10px] text-slate-400 font-bold uppercase block">Email Address</span>
@@ -379,7 +396,7 @@ export default function CustomerTrackingPage() {
           <div className="grid grid-cols-2 gap-3 text-xs pt-1">
             <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
               <span className="text-[10px] text-slate-400 font-bold uppercase block">Consignee Name</span>
-              <strong className="text-slate-900 text-sm font-bold">{shipment.receiver_name || 'Rahul Kumar'}</strong>
+              <strong className="text-slate-900 text-sm font-bold">{shipment.receiver_name || 'Consignee Receiver'}</strong>
             </div>
             <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
               <span className="text-[10px] text-slate-400 font-bold uppercase block">Receiver Company</span>
@@ -387,7 +404,7 @@ export default function CustomerTrackingPage() {
             </div>
             <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
               <span className="text-[10px] text-slate-400 font-bold uppercase block">Receiver Phone</span>
-              <strong className="text-slate-900 text-sm font-bold">{shipment.receiver_phone || '+91 98401 12345'}</strong>
+              <strong className="text-slate-900 text-sm font-bold">{shipment.receiver_phone || '+91 98410 11111'}</strong>
             </div>
             <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
               <span className="text-[10px] text-slate-400 font-bold uppercase block">Receiver Email</span>
@@ -441,14 +458,14 @@ export default function CustomerTrackingPage() {
             4. Commercial Carrier & Pilot Driver
           </h3>
 
-          {shipment.status === 'PENDING_REVIEW' || shipment.status === 'PENDING' ? (
-            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1.5 text-center">
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800">
+          {!isAssigned ? (
+            <div className="p-5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2 text-center">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100/90 text-amber-900 text-xs font-bold rounded-full">
                 <Clock className="w-4 h-4 text-amber-600" />
-                <span>Awaiting Dispatcher Acceptance</span>
+                <span>Awaiting Dispatcher Review & Vehicle Allocation</span>
               </div>
-              <p className="text-[11px] text-amber-700 font-medium">
-                Your consignment is currently in queue. Once the dispatcher reviews and accepts the load, the assigned commercial vehicle, pilot driver credentials, and real-time contact details will appear here.
+              <p className="text-xs text-amber-800 font-medium max-w-md mx-auto leading-relaxed">
+                Your consignment is currently in the dispatch queue. Once the dispatcher reviews and allocates a commercial vehicle (L-01 to L-09) and assigned pilot driver, their verified credentials, registration number, and direct contact details will appear here.
               </p>
             </div>
           ) : (

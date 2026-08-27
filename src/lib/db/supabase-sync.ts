@@ -145,22 +145,101 @@ export async function initSupabaseStoreSync() {
       });
     }
 
-    // 2. Realtime Subscriptions: Listen to changes across all tables
+    // 2. Realtime Subscriptions: Listen to changes across all tables via WebSocket
     supabase
       .channel('fleetmind-unified-sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shipments' }, (payload) => {
-        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        if (payload.eventType === 'INSERT') {
           const s = payload.new as any;
-          const existing = fleetMindStore.getShipmentById(s.id);
+          const existing = fleetMindStore.getShipmentById(s.id) || fleetMindStore.getShipmentById(s.shipment_code);
+          if (!existing) {
+            fleetMindStore.createShipment({
+              id: s.id,
+              shipment_code: s.shipment_code,
+              customer_id: s.customer_id,
+              customer_name: s.customer_name,
+              customer_email: s.customer_email,
+              description: s.description,
+              weight_kg: Number(s.weight_kg),
+              volume_m3: Number(s.volume_m3),
+              category: s.category,
+              priority: s.priority,
+              pickup_address: s.pickup_address,
+              pickup_city: s.pickup_city,
+              pickup_lat: Number(s.pickup_lat),
+              pickup_lng: Number(s.pickup_lng),
+              destination_address: s.destination_address,
+              destination_city: s.destination_city,
+              destination_lat: Number(s.destination_lat),
+              destination_lng: Number(s.destination_lng),
+              delivery_deadline: s.delivery_deadline,
+              status: s.status,
+            });
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          const s = payload.new as any;
+          const existing = fleetMindStore.getShipmentById(s.id) || fleetMindStore.getShipmentById(s.shipment_code);
           if (existing) {
-            fleetMindStore.updateShipmentStatus(s.id, s.status);
+            fleetMindStore.updateShipmentStatus(existing.id, s.status);
           }
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, (payload) => {
-        if (payload.eventType === 'UPDATE') {
+        if (payload.eventType === 'INSERT') {
+          const v = payload.new as any;
+          const existing = fleetMindStore.getLorryById(v.id) || fleetMindStore.getLorryById(v.lorry_code);
+          if (!existing) {
+            fleetMindStore.createLorry({
+              id: v.id,
+              lorry_code: v.lorry_code,
+              registration_number: v.registration_number,
+              model: v.model,
+              max_weight_kg: Number(v.max_weight_kg),
+              max_volume_m3: Number(v.max_volume_m3),
+              fuel_efficiency_km_per_l: Number(v.fuel_efficiency_km_per_l),
+              status: v.status,
+            });
+          }
+        } else if (payload.eventType === 'UPDATE') {
           const v = payload.new as any;
           fleetMindStore.updateLorryStatus(v.id, v.status);
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const d = payload.new as any;
+          const existing = fleetMindStore.getDriverById(d.id);
+          if (!existing) {
+            fleetMindStore.createDriver({
+              id: d.id,
+              name: d.name,
+              phone: d.phone,
+              license_number: d.license_number,
+              availability_status: d.availability_status,
+            });
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          const d = payload.new as any;
+          fleetMindStore.updateDriverStatus(d.id, d.availability_status);
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const p = payload.new as any;
+          const existing = fleetMindStore.getUserByEmail(p.email) || fleetMindStore.getUserByUid(p.firebase_uid);
+          if (existing) {
+            existing.role = p.role;
+            existing.is_active = p.is_active;
+          } else {
+            fleetMindStore.createUser({
+              id: p.id,
+              firebase_uid: p.firebase_uid,
+              email: p.email,
+              full_name: p.full_name,
+              role: p.role,
+              is_active: p.is_active,
+            });
+          }
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'gps_locations' }, (payload) => {
@@ -177,7 +256,7 @@ export async function initSupabaseStoreSync() {
       })
       .subscribe();
 
-    console.log('[Supabase Sync] Successfully connected and subscribed to live Supabase PostgreSQL tables.');
+    console.log('[Supabase Sync] Connected and subscribed to live Supabase PostgreSQL WebSocket channels.');
   } catch (err) {
     console.warn('[Supabase Sync] Hydration/Subscription non-blocking warning:', err);
   }

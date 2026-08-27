@@ -1,68 +1,99 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
-import { Truck, Gauge, Fuel, CheckCircle2 } from 'lucide-react';
+import { Truck, Gauge, Fuel, CheckCircle2, Inbox } from 'lucide-react';
 
 export default function FleetAnalyticsPage() {
-  const lorries = fleetMindStore.getLorries();
+  const [lorries, setLorries] = useState(fleetMindStore.getLorries());
+
+  useEffect(() => {
+    const update = () => setLorries(fleetMindStore.getLorries());
+    update();
+    const unsub = fleetMindStore.subscribe(update);
+    return unsub;
+  }, []);
+
+  const totalCapacityTonnes = (lorries.reduce((s, l) => s + (l.max_weight_kg || 0), 0) / 1000).toFixed(1);
+  const onRouteCount = lorries.filter((l) => l.status === 'ON_ROUTE').length;
+  const utilizationRate = lorries.length > 0 ? Number(((onRouteCount / lorries.length) * 100).toFixed(1)) : 0;
+  const avgEfficiency =
+    lorries.length > 0
+      ? (lorries.reduce((s, l) => s + (l.fuel_efficiency_km_per_l || 0), 0) / lorries.length).toFixed(1)
+      : '0.0';
 
   return (
     <>
       <PortalHeader
         title="Fleet Capacity & Utilization Analytics"
-        subtitle="Asset utilization rates, tare-to-gross payload density, maintenance downtime & positioning efficiency"
+        subtitle="Asset utilization rates, payload capacity, maintenance downtime & positioning efficiency"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-card">
+          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Fleet Capacity</span>
-            <div className="text-2xl font-black text-slate-900 mt-1">
-              {(lorries.reduce((s, l) => s + l.max_weight_kg, 0) / 1000).toFixed(1)} Tonnes
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">Aggregate payload across 24 vehicles</p>
+            <div className="text-2xl font-black text-slate-900">{totalCapacityTonnes} Tonnes</div>
+            <p className="text-xs text-slate-500 font-medium">Aggregate payload across {lorries.length} registered vehicles</p>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-card">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Average Payload Density</span>
-            <div className="text-2xl font-black text-emerald-700 mt-1">82.5%</div>
-            <p className="text-xs text-slate-500 mt-0.5">Achieved via multi-stop consolidation</p>
+          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fleet Active Utilization</span>
+            <div className="text-2xl font-black text-emerald-700">{utilizationRate}%</div>
+            <p className="text-xs text-slate-500 font-medium">{onRouteCount} vehicles actively on route</p>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-card">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Positioning Deadhead</span>
-            <div className="text-2xl font-black text-blue-700 mt-1">4.2%</div>
-            <p className="text-xs text-slate-500 mt-0.5">Unbilled positioning distance</p>
+          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-card space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Average Mileage Rating</span>
+            <div className="text-2xl font-black text-blue-700">{avgEfficiency} km / L</div>
+            <p className="text-xs text-slate-500 font-medium">Fleet-wide fuel consumption average</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-6">
-          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-6 space-y-4">
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
             Vehicle Fleet Telemetry Breakdown
           </h3>
 
-          <div className="space-y-3">
-            {lorries.slice(0, 8).map((l) => (
-              <div key={l.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-bold text-slate-900">{l.lorry_code} ({l.model})</span>
-                  <p className="text-[11px] text-slate-500">{l.registration_number} • Depot: {l.current_address}</p>
-                </div>
-                <div className="flex items-center gap-6 text-right">
+          {lorries.length > 0 ? (
+            <div className="space-y-3">
+              {lorries.map((l) => (
+                <div key={l.id} className="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 flex items-center justify-between text-xs hover:bg-slate-100/70 transition">
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Capacity</span>
-                    <strong className="text-slate-800">{l.max_weight_kg.toLocaleString()} kg</strong>
+                    <span className="font-bold text-slate-900">{l.lorry_code} ({l.model})</span>
+                    <p className="text-[11px] text-slate-500">{l.registration_number} • Depot: {l.current_address}</p>
                   </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Fuel Economy</span>
-                    <strong className="text-blue-700">{l.fuel_efficiency_km_per_l} km/L</strong>
+                  <div className="flex items-center gap-6 text-right">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Capacity</span>
+                      <strong className="text-slate-800">{l.max_weight_kg.toLocaleString()} kg</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Fuel Economy</span>
+                      <strong className="text-blue-700">{l.fuel_efficiency_km_per_l} km/L</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Status</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        l.status === 'ON_ROUTE' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-50 text-blue-700'
+                      }`}>
+                        {l.status}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center p-6 text-center text-xs text-slate-400 space-y-2 bg-slate-50/50">
+              <Inbox className="w-8 h-8 text-slate-300" />
+              <p className="font-semibold text-slate-600">No Vehicles Registered</p>
+              <p className="max-w-xs text-[11px] text-slate-400">
+                Register commercial carriers in Dispatcher Fleet portal to monitor live utilization.
+              </p>
+            </div>
+          )}
         </div>
       </main>
     </>

@@ -758,7 +758,7 @@ class FleetMindStore {
     return () => this.listeners.delete(callback);
   }
 
-  private notify(event: string, data?: any) {
+  public notify(event: string, data?: any) {
     this.saveToLocalStorage();
     this.listeners.forEach((cb) => {
       try {
@@ -1309,6 +1309,7 @@ class FleetMindStore {
     if (!s) return null;
     s.status = status;
     s.updated_at = new Date().toISOString();
+    this.saveToLocalStorage();
     this.notify('SHIPMENT_UPDATED', s);
     syncShipmentToSupabase(s);
     return s;
@@ -1318,6 +1319,7 @@ class FleetMindStore {
     const idx = this.shipments.findIndex((s) => s.id === shipmentId || s.shipment_code === shipmentId);
     if (idx === -1) return false;
     const deleted = this.shipments.splice(idx, 1)[0];
+    this.saveToLocalStorage();
     this.logAudit(userEmail, 'ADMIN', 'SHIPMENT_DELETED', 'SHIPMENT', deleted.id, deleted, null);
     this.notify('SHIPMENT_DELETED', deleted);
     deleteShipmentFromSupabase(deleted.id);
@@ -1910,12 +1912,31 @@ class FleetMindStore {
       action_url: `/dispatcher/shipments`,
     });
 
+    // Free up lorry and driver
+    if (shipment.assigned_lorry_id) {
+      const l = this.lorries.find((x) => x.id === shipment.assigned_lorry_id);
+      if (l) {
+        l.status = 'AVAILABLE';
+        syncVehicleToSupabase(l);
+      }
+    }
+    if (shipment.assigned_driver_id) {
+      const d = this.drivers.find((x) => x.id === shipment.assigned_driver_id);
+      if (d) {
+        d.availability_status = 'AVAILABLE';
+        d.total_deliveries = (d.total_deliveries || 0) + 1;
+        syncDriverToSupabase(d);
+      }
+    }
+
+    this.saveToLocalStorage();
     this.logAudit('driver@fleetmind.ai', 'DRIVER', 'PROOF_OF_DELIVERY_CONFIRMED', 'SHIPMENT', shipment.id, null, {
       receiver_name: data.receiver_name,
       delivered_at: shipment.actual_delivery_time,
     });
 
     this.notify('SHIPMENT_DELIVERED', shipment);
+    syncShipmentToSupabase(shipment);
     return { success: true, shipment };
   }
 

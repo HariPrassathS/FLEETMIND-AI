@@ -1,6 +1,6 @@
 import { getSupabaseClient } from './supabase';
 import { fleetMindStore } from './store';
-import { Shipment, Lorry, Driver, Route } from '../optimization/types';
+import { Shipment, Lorry, Driver, Trip, NotificationItem } from '../optimization/types';
 import { UserProfile } from '../../types/database';
 
 // Helper to ensure valid UUID format for PostgreSQL UUID columns
@@ -30,6 +30,7 @@ let isInitialized = false;
 
 /**
  * Initializes bidirectional synchronization between Supabase PostgreSQL and the local state store.
+ * Supabase is the AUTHORITATIVE SINGLE SOURCE OF TRUTH.
  */
 export async function initSupabaseStoreSync() {
   if (isInitialized) return;
@@ -42,28 +43,26 @@ export async function initSupabaseStoreSync() {
   isInitialized = true;
 
   try {
-    // 1. Initial Load: Fetch ALL records from Supabase — Supabase is the SINGLE SOURCE OF TRUTH.
-    //    Any data in localStorage is only a fast cache; Supabase always overwrites it.
-    const [profilesRes, vehiclesRes, driversRes, shipmentsRes] = await Promise.allSettled([
+    // 1. Initial Load: Fetch ALL records from Supabase tables
+    const [profilesRes, vehiclesRes, driversRes, shipmentsRes, tripsRes, notifsRes] = await Promise.allSettled([
       supabase.from('profiles').select('*'),
       supabase.from('vehicles').select('*'),
       supabase.from('drivers').select('*'),
       supabase.from('shipments').select('*').order('created_at', { ascending: false }),
+      supabase.from('trips').select('*').order('created_at', { ascending: false }),
+      supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(50),
     ]);
 
-    // --- PROFILES: Replace local with Supabase truth ---
+    // --- PROFILES ---
     if (profilesRes.status === 'fulfilled' && profilesRes.value.data && profilesRes.value.data.length > 0) {
-      // Merge: Supabase records win. Keep any local-only records that haven't synced yet.
       const supabaseProfiles = profilesRes.value.data;
       const supabaseEmails = new Set(supabaseProfiles.map((p: any) => p.email));
       const supabaseUids = new Set(supabaseProfiles.map((p: any) => p.firebase_uid).filter(Boolean));
 
-      // Get local-only records (not yet in Supabase)
       const localOnlyUsers = fleetMindStore.getUsers().filter(
         (u) => !supabaseEmails.has(u.email) && !supabaseUids.has(u.firebase_uid)
       );
 
-      // Clear and rebuild from Supabase + local-only
       fleetMindStore.replaceUsers([
         ...supabaseProfiles.map((p: any) => ({
           id: p.id,
@@ -80,19 +79,17 @@ export async function initSupabaseStoreSync() {
         ...localOnlyUsers,
       ]);
 
-      // Push local-only records to Supabase so they appear on other devices
       for (const u of localOnlyUsers) {
         syncProfileToSupabase(u);
       }
     } else if (profilesRes.status === 'fulfilled' && profilesRes.value.data) {
-      // Supabase is empty — push all local users to Supabase
       const localUsers = fleetMindStore.getUsers();
       for (const u of localUsers) {
         syncProfileToSupabase(u);
       }
     }
 
-    // --- VEHICLES: Replace local with Supabase truth ---
+    // --- VEHICLES ---
     if (vehiclesRes.status === 'fulfilled' && vehiclesRes.value.data && vehiclesRes.value.data.length > 0) {
       const supabaseVehicles = vehiclesRes.value.data;
       const supabaseLorryCodes = new Set(supabaseVehicles.map((v: any) => v.lorry_code));
@@ -113,10 +110,13 @@ export async function initSupabaseStoreSync() {
           fuel_efficiency_km_per_l: Number(v.fuel_efficiency_km_per_l),
           current_lat: Number(v.current_lat || 13.0827),
           current_lng: Number(v.current_lng || 80.2707),
-          current_address: v.current_address || 'Chennai Central Logistics Park',
+          current_address: v.current_address || 'Regional Freight Depot',
           status: v.status || 'AVAILABLE',
           is_refrigerated: v.is_refrigerated || false,
-          assigned_driver_id: v.driver_id || undefined,
+          driver_id: v.driver_id || undefined,
+          assigned_driver_name: v.assigned_driver_name || undefined,
+          created_at: v.created_at,
+          updated_at: v.updated_at,
         })),
         ...localOnlyLorries,
       ]);
@@ -131,7 +131,7 @@ export async function initSupabaseStoreSync() {
       }
     }
 
-    // --- DRIVERS: Replace local with Supabase truth ---
+    // --- DRIVERS ---
     if (driversRes.status === 'fulfilled' && driversRes.value.data && driversRes.value.data.length > 0) {
       const supabaseDrivers = driversRes.value.data;
       const supabaseDriverIds = new Set(supabaseDrivers.map((d: any) => d.id));
@@ -152,9 +152,11 @@ export async function initSupabaseStoreSync() {
           availability_status: d.availability_status || 'AVAILABLE',
           shift_start: d.shift_start || '06:00',
           shift_end: d.shift_end || '18:00',
-          performance_score: d.performance_score,
-          total_deliveries: d.total_deliveries,
-          assigned_lorry_id: d.vehicle_id || undefined,
+          performance_score: d.performance_score || 95,
+          total_deliveries: d.total_deliveries || 0,
+          assigned_lorry_id: d.assigned_lorry_id || undefined,
+          created_at: d.created_at,
+          updated_at: d.updated_at,
         })),
         ...localOnlyDrivers,
       ]);
@@ -169,7 +171,7 @@ export async function initSupabaseStoreSync() {
       }
     }
 
-    // --- SHIPMENTS: Replace local with Supabase truth ---
+    // --- SHIPMENTS ---
     if (shipmentsRes.status === 'fulfilled' && shipmentsRes.value.data && shipmentsRes.value.data.length > 0) {
       const supabaseShipments = shipmentsRes.value.data;
       const supabaseShipmentCodes = new Set(supabaseShipments.map((s: any) => s.shipment_code));
@@ -204,19 +206,25 @@ export async function initSupabaseStoreSync() {
           special_instructions: s.special_instructions,
           pickup_address: s.pickup_address || '',
           pickup_city: s.pickup_city || '',
-          pickup_lat: Number(s.pickup_lat || 0),
-          pickup_lng: Number(s.pickup_lng || 0),
+          pickup_lat: Number(s.pickup_lat || 13.0827),
+          pickup_lng: Number(s.pickup_lng || 80.2707),
           pickup_time: s.pickup_time,
           destination_address: s.destination_address || '',
           destination_city: s.destination_city || '',
-          destination_lat: Number(s.destination_lat || 0),
-          destination_lng: Number(s.destination_lng || 0),
+          destination_lat: Number(s.destination_lat || 12.9716),
+          destination_lng: Number(s.destination_lng || 77.5946),
           delivery_deadline: s.delivery_deadline,
           status: s.status || 'PENDING',
           assigned_lorry_id: s.assigned_lorry_id,
           assigned_lorry_code: s.assigned_lorry_code,
           assigned_driver_id: s.assigned_driver_id,
           assigned_driver_name: s.assigned_driver_name,
+          otp_code: s.otp_code,
+          otp_verified_at: s.otp_verified_at,
+          signature_path: s.signature_path,
+          proof_of_delivery_path: s.proof_of_delivery_path,
+          receiver_verified_name: s.receiver_verified_name,
+          delivery_notes: s.delivery_notes,
           created_at: s.created_at,
           updated_at: s.updated_at,
         })),
@@ -233,10 +241,10 @@ export async function initSupabaseStoreSync() {
       }
     }
 
-    // Save the merged truth to localStorage for fast offline cache
+    // Save authoritative truth to local storage for fast initial render
     fleetMindStore.saveToLocalStorage();
 
-    // 2. Realtime Subscriptions: Listen to changes across all tables via WebSocket
+    // 2. Realtime WebSocket Subscription across all tables
     supabase
       .channel('fleetmind-unified-sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shipments' }, (payload) => {
@@ -271,7 +279,25 @@ export async function initSupabaseStoreSync() {
           const s = payload.new as any;
           const existing = fleetMindStore.getShipmentById(s.id) || fleetMindStore.getShipmentById(s.shipment_code);
           if (existing) {
-            fleetMindStore.updateShipmentStatus(existing.id, s.status);
+            existing.status = s.status;
+            if (s.assigned_lorry_id) existing.assigned_lorry_id = s.assigned_lorry_id;
+            if (s.assigned_lorry_code) existing.assigned_lorry_code = s.assigned_lorry_code;
+            if (s.assigned_driver_id) existing.assigned_driver_id = s.assigned_driver_id;
+            if (s.assigned_driver_name) existing.assigned_driver_name = s.assigned_driver_name;
+            if (s.otp_code) existing.otp_code = s.otp_code;
+            if (s.otp_verified_at) existing.otp_verified_at = s.otp_verified_at;
+            if (s.signature_path) existing.signature_path = s.signature_path;
+            if (s.proof_of_delivery_path) existing.proof_of_delivery_path = s.proof_of_delivery_path;
+            if (s.receiver_verified_name) existing.receiver_verified_name = s.receiver_verified_name;
+            if (s.delivery_notes) existing.delivery_notes = s.delivery_notes;
+            existing.updated_at = s.updated_at || new Date().toISOString();
+            fleetMindStore.saveToLocalStorage();
+            fleetMindStore.notify('SHIPMENT_UPDATED', existing);
+          }
+        } else if (payload.eventType === 'DELETE') {
+          const old = payload.old as any;
+          if (old?.id) {
+            fleetMindStore.deleteShipment(old.id);
           }
         }
       })
@@ -293,7 +319,20 @@ export async function initSupabaseStoreSync() {
           }
         } else if (payload.eventType === 'UPDATE') {
           const v = payload.new as any;
-          fleetMindStore.updateLorryStatus(v.id, v.status);
+          const existing = fleetMindStore.getLorryById(v.id) || fleetMindStore.getLorryById(v.lorry_code);
+          if (existing) {
+            existing.status = v.status;
+            existing.current_lat = Number(v.current_lat || existing.current_lat);
+            existing.current_lng = Number(v.current_lng || existing.current_lng);
+            existing.current_address = v.current_address || existing.current_address;
+            existing.driver_id = v.driver_id;
+            existing.assigned_driver_name = v.assigned_driver_name;
+            fleetMindStore.saveToLocalStorage();
+            fleetMindStore.notify('LORRY_UPDATED', existing);
+          }
+        } else if (payload.eventType === 'DELETE') {
+          const old = payload.old as any;
+          if (old?.id) fleetMindStore.deleteLorry(old.id);
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, (payload) => {
@@ -311,7 +350,20 @@ export async function initSupabaseStoreSync() {
           }
         } else if (payload.eventType === 'UPDATE') {
           const d = payload.new as any;
-          fleetMindStore.updateDriverStatus(d.id, d.availability_status);
+          const existing = fleetMindStore.getDriverById(d.id);
+          if (existing) {
+            existing.availability_status = d.availability_status;
+            existing.current_lat = Number(d.current_lat || existing.current_lat);
+            existing.current_lng = Number(d.current_lng || existing.current_lng);
+            existing.assigned_lorry_id = d.assigned_lorry_id;
+            existing.performance_score = d.performance_score;
+            existing.total_deliveries = d.total_deliveries;
+            fleetMindStore.saveToLocalStorage();
+            fleetMindStore.notify('DRIVER_UPDATED', existing);
+          }
+        } else if (payload.eventType === 'DELETE') {
+          const old = payload.old as any;
+          if (old?.id) fleetMindStore.deleteDriver(old.id);
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
@@ -321,6 +373,9 @@ export async function initSupabaseStoreSync() {
           if (existing) {
             existing.role = p.role;
             existing.is_active = p.is_active;
+            existing.full_name = p.full_name || existing.full_name;
+            fleetMindStore.saveToLocalStorage();
+            fleetMindStore.notify('USER_UPDATED', existing);
           } else {
             fleetMindStore.createUser({
               id: p.id,
@@ -331,6 +386,22 @@ export async function initSupabaseStoreSync() {
               is_active: p.is_active,
             });
           }
+        } else if (payload.eventType === 'DELETE') {
+          const old = payload.old as any;
+          if (old?.id || old?.email) fleetMindStore.deleteUser(old.id || old.email);
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const n = payload.new as any;
+          fleetMindStore.createNotification({
+            user_id: n.user_id || n.user_email,
+            type: n.type,
+            title: n.title,
+            message: n.message,
+            severity: n.severity,
+            action_url: n.entity_id ? `/customer/shipments/${n.entity_id}` : undefined,
+          });
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'gps_locations' }, (payload) => {
@@ -345,16 +416,20 @@ export async function initSupabaseStoreSync() {
           });
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[Supabase Realtime] Channel status: ${status}`);
+        if (status === 'SUBSCRIBED') {
+          console.log('[Supabase Realtime] Multi-device live synchronization connected.');
+        }
+      });
 
-    console.log('[Supabase Sync] Connected and subscribed to live Supabase PostgreSQL WebSocket channels.');
   } catch (err) {
     console.warn('[Supabase Sync] Hydration/Subscription non-blocking warning:', err);
   }
 }
 
 /**
- * Persists a shipment to Supabase PostgreSQL asynchronously.
+ * Persists a shipment to Supabase PostgreSQL.
  */
 export async function syncShipmentToSupabase(shipment: Shipment): Promise<void> {
   const supabase = getSupabaseClient();
@@ -398,6 +473,12 @@ export async function syncShipmentToSupabase(shipment: Shipment): Promise<void> 
       assigned_lorry_code: shipment.assigned_lorry_code || null,
       assigned_driver_id: shipment.assigned_driver_id ? ensureUUID(shipment.assigned_driver_id) : null,
       assigned_driver_name: shipment.assigned_driver_name || null,
+      otp_code: shipment.otp_code || null,
+      otp_verified_at: shipment.otp_verified_at || null,
+      signature_path: shipment.signature_path || null,
+      proof_of_delivery_path: shipment.proof_of_delivery_path || null,
+      receiver_verified_name: shipment.receiver_verified_name || null,
+      delivery_notes: shipment.delivery_notes || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -411,7 +492,7 @@ export async function syncShipmentToSupabase(shipment: Shipment): Promise<void> 
 }
 
 /**
- * Persists a vehicle/lorry to Supabase PostgreSQL asynchronously.
+ * Persists a vehicle/lorry to Supabase PostgreSQL.
  */
 export async function syncVehicleToSupabase(lorry: Lorry): Promise<void> {
   const supabase = getSupabaseClient();
@@ -431,6 +512,8 @@ export async function syncVehicleToSupabase(lorry: Lorry): Promise<void> {
       current_address: lorry.current_address || 'Regional Freight Depot',
       status: lorry.status || 'AVAILABLE',
       is_refrigerated: Boolean(lorry.is_refrigerated),
+      driver_id: lorry.driver_id ? ensureUUID(lorry.driver_id) : null,
+      assigned_driver_name: lorry.assigned_driver_name || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -444,7 +527,7 @@ export async function syncVehicleToSupabase(lorry: Lorry): Promise<void> {
 }
 
 /**
- * Persists a driver to Supabase PostgreSQL asynchronously.
+ * Persists a driver to Supabase PostgreSQL.
  */
 export async function syncDriverToSupabase(driver: Driver): Promise<void> {
   const supabase = getSupabaseClient();
@@ -477,7 +560,7 @@ export async function syncDriverToSupabase(driver: Driver): Promise<void> {
 }
 
 /**
- * Persists a user profile to Supabase PostgreSQL asynchronously.
+ * Persists a user profile to Supabase PostgreSQL.
  */
 export async function syncProfileToSupabase(user: UserProfile): Promise<void> {
   const supabase = getSupabaseClient();
@@ -529,6 +612,32 @@ export async function syncGpsTelemetryToSupabase(telemetry: {
     });
   } catch (err) {
     // Non-blocking telemetry
+  }
+}
+
+/**
+ * Persists a notification to Supabase PostgreSQL.
+ */
+export async function syncNotificationToSupabase(notif: NotificationItem): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  try {
+    const userId = (notif as any).user_id || (notif as any).recipient_role || 'ALL';
+    await supabase.from('notifications').insert({
+      id: ensureUUID(notif.id),
+      user_id: userId,
+      type: notif.type,
+      title: notif.title,
+      message: notif.message,
+      severity: notif.severity || 'LOW',
+      is_read: Boolean(notif.is_read),
+      entity_type: notif.entity_type,
+      entity_id: notif.entity_id,
+      created_at: notif.timestamp || new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('[Supabase Sync] Notification sync notice:', err);
   }
 }
 

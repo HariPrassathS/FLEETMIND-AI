@@ -185,6 +185,7 @@ export interface Shipment {
   assigned_route_code?: string | null;
 
   // OTP & Proof of Delivery Metadata
+  otp_code?: string;
   otp_verified_at?: string;
   proof_of_delivery_path?: string;
   signature_path?: string;

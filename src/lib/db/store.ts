@@ -1481,6 +1481,7 @@ class FleetMindStore {
       updated_at: lorry.updated_at || new Date().toISOString(),
     };
     this.lorries.push(newLorry);
+    this.saveToLocalStorage();
     this.logAudit('admin@fleetmind.ai', 'ADMIN', 'LORRY_CREATED', 'LORRY', newLorry.id, null, newLorry);
     this.notify('LORRY_CREATED', newLorry);
     if (!skipRemoteSync) {
@@ -1495,6 +1496,7 @@ class FleetMindStore {
     const before = { ...l };
     l.status = status;
     l.updated_at = new Date().toISOString();
+    this.saveToLocalStorage();
     this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'LORRY_STATUS_UPDATED', 'LORRY', l.id, before, l);
     this.notify('LORRY_UPDATED', l);
     if (!skipRemoteSync) {
@@ -1521,6 +1523,7 @@ class FleetMindStore {
     if (pairedDriver) {
       pairedDriver.assigned_lorry_id = null;
     }
+    this.saveToLocalStorage();
     this.logAudit(adminEmail, 'ADMIN', 'LORRY_DELETED', 'LORRY', deleted.id, deleted, null);
     this.notify('LORRY_DELETED', deleted);
     deleteVehicleFromSupabase(deleted.id);
@@ -1585,6 +1588,7 @@ class FleetMindStore {
       updated_at: driver.updated_at || new Date().toISOString(),
     };
     this.drivers.push(newDriver);
+    this.saveToLocalStorage();
     this.logAudit('admin@fleetmind.ai', 'ADMIN', 'DRIVER_CREATED', 'DRIVER', newDriver.id, null, newDriver);
     this.notify('DRIVER_CREATED', newDriver);
     if (!skipRemoteSync) {

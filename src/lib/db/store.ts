@@ -65,11 +65,67 @@ class FleetMindStore {
   private listeners: Set<(event: string, data?: any) => void> = new Set();
 
   constructor() {
-    // Clean initial state for live operations
+    // 1. Load instantly from localStorage so refresh never deletes data
     if (typeof window !== 'undefined') {
+      this.loadFromLocalStorage();
       setTimeout(() => {
         initSupabaseStoreSync();
       }, 50);
+    }
+  }
+
+  private loadFromLocalStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      const s = localStorage.getItem('fleetmind_shipments');
+      if (s) this.shipments = JSON.parse(s);
+
+      const l = localStorage.getItem('fleetmind_lorries');
+      if (l) this.lorries = JSON.parse(l);
+
+      const d = localStorage.getItem('fleetmind_drivers');
+      if (d) this.drivers = JSON.parse(d);
+
+      const u = localStorage.getItem('fleetmind_users');
+      if (u) this.users = JSON.parse(u);
+
+      const r = localStorage.getItem('fleetmind_routes');
+      if (r) this.routes = JSON.parse(r);
+
+      const opt = localStorage.getItem('fleetmind_runs');
+      if (opt) this.optimizationRuns = JSON.parse(opt);
+
+      const t = localStorage.getItem('fleetmind_trips');
+      if (t) this.trips = JSON.parse(t);
+
+      const exp = localStorage.getItem('fleetmind_expenses');
+      if (exp) this.expenses = JSON.parse(exp);
+
+      const fuel = localStorage.getItem('fleetmind_fuel_records');
+      if (fuel) this.fuelRecords = JSON.parse(fuel);
+
+      const al = localStorage.getItem('fleetmind_alerts');
+      if (al) this.alerts = JSON.parse(al);
+    } catch (e) {
+      console.warn('[LocalStorage] Load error:', e);
+    }
+  }
+
+  public saveToLocalStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('fleetmind_shipments', JSON.stringify(this.shipments));
+      localStorage.setItem('fleetmind_lorries', JSON.stringify(this.lorries));
+      localStorage.setItem('fleetmind_drivers', JSON.stringify(this.drivers));
+      localStorage.setItem('fleetmind_users', JSON.stringify(this.users));
+      localStorage.setItem('fleetmind_routes', JSON.stringify(this.routes));
+      localStorage.setItem('fleetmind_runs', JSON.stringify(this.optimizationRuns));
+      localStorage.setItem('fleetmind_trips', JSON.stringify(this.trips));
+      localStorage.setItem('fleetmind_expenses', JSON.stringify(this.expenses));
+      localStorage.setItem('fleetmind_fuel_records', JSON.stringify(this.fuelRecords));
+      localStorage.setItem('fleetmind_alerts', JSON.stringify(this.alerts));
+    } catch (e) {
+      console.warn('[LocalStorage] Save error:', e);
     }
   }
 
@@ -94,6 +150,9 @@ class FleetMindStore {
     this.cargoTransfers = [];
     this.alerts = [];
     this.auditLogs = [];
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+    }
     this.notify('RESET_DATA');
   }
 
@@ -668,6 +727,7 @@ class FleetMindStore {
   }
 
   private notify(event: string, data?: any) {
+    this.saveToLocalStorage();
     this.listeners.forEach((cb) => {
       try {
         cb(event, data);

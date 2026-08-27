@@ -16,6 +16,7 @@ import {
   Sliders,
 } from 'lucide-react';
 import { fleetMindStore } from '../../lib/db/store';
+import { useAuth } from '../../lib/auth/auth-context';
 
 interface GlobalSearchDialogProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export function GlobalSearchDialog({
   onClose,
 }: GlobalSearchDialogProps) {
   const router = useRouter();
+  const { role } = useAuth();
   const [query, setQuery] = useState('');
 
   useEffect(() => {
@@ -181,7 +183,17 @@ export function GlobalSearchDialog({
                 {filteredShipments.map((s) => (
                   <button
                     key={s.id}
-                    onClick={() => handleNavigate('/dispatcher/shipments')}
+                    onClick={() =>
+                      handleNavigate(
+                        role === 'CUSTOMER'
+                          ? `/customer/shipments`
+                          : role === 'DRIVER'
+                          ? `/driver/route`
+                          : role === 'MANAGER'
+                          ? `/manager/delivery`
+                          : `/dispatcher/shipments`
+                      )
+                    }
                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 text-left transition"
                   >
                     <div className="flex items-center gap-2.5">
@@ -228,7 +240,15 @@ export function GlobalSearchDialog({
                 {filteredLorries.map((l) => (
                   <button
                     key={l.id}
-                    onClick={() => handleNavigate('/dispatcher/fleet')}
+                    onClick={() =>
+                      handleNavigate(
+                        role === 'ADMIN'
+                          ? `/admin/fleet`
+                          : role === 'MANAGER'
+                          ? `/manager/fleet-analytics`
+                          : `/dispatcher/fleet`
+                      )
+                    }
                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 text-left transition"
                   >
                     <div className="flex items-center gap-2.5">
@@ -272,7 +292,15 @@ export function GlobalSearchDialog({
                 {filteredDrivers.map((d) => (
                   <button
                     key={d.id}
-                    onClick={() => handleNavigate('/admin/drivers')}
+                    onClick={() =>
+                      handleNavigate(
+                        role === 'ADMIN'
+                          ? `/admin/drivers`
+                          : role === 'MANAGER'
+                          ? `/manager/performance`
+                          : `/dispatcher/drivers`
+                      )
+                    }
                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 text-left transition"
                   >
                     <div className="flex items-center gap-2.5">

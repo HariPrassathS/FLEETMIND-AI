@@ -41,6 +41,7 @@ DO $$ BEGIN
         'ACCEPTED',
         'ASSIGNMENT_PENDING',
         'ASSIGNED',
+        
         'PICKUP_SCHEDULED',
         'EN_ROUTE_TO_PICKUP',
         'ARRIVED_PICKUP',
@@ -661,3 +662,22 @@ INSERT INTO drivers (
     ('Karthik Raja', '+91 98403 44556', 'TN09-2016009912', 12.9810, 80.1800, 'AVAILABLE', '07:00', '19:00', 94),
     ('Suresh Gowda', '+91 98801 55667', 'KA01-2018003304', 12.9350, 77.6240, 'AVAILABLE', '06:00', '18:00', 97)
 ON CONFLICT (license_number) DO NOTHING;
+
+-- Canonical System Administrator Profile
+INSERT INTO profiles (
+    firebase_uid,
+    email,
+    full_name,
+    role,
+    is_active,
+    is_verified
+) VALUES (
+    'Mv2VcEbnG9dtzFxxS6twdO2DKGG3',
+    'admin@fleetmind.ai',
+    'System Administrator',
+    'ADMIN',
+    true,
+    true
+) ON CONFLICT (firebase_uid) DO UPDATE 
+SET role = 'ADMIN', is_active = true, is_verified = true;
+

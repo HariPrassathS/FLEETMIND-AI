@@ -70,6 +70,8 @@ export function getRoleDashboardPath(role?: UserRole | null): string {
   }
 }
 
+export const SYSTEM_ADMIN_UIDS = ['Mv2VcEbnG9dtzFxxS6twdO2DKGG3'];
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(() => {
     if (typeof window !== 'undefined') {
@@ -80,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch {}
       }
     }
-    return SEED_USERS[1]; // Dispatcher Pooja Sundaram by default
+    return null;
   });
 
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -92,15 +94,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser && fbUser.email) {
+        const isAdminUid = SYSTEM_ADMIN_UIDS.includes(fbUser.uid);
         let profile = fleetMindStore.getUserByEmail(fbUser.email);
         if (profile) {
-          if (!profile.firebase_uid || profile.firebase_uid !== fbUser.uid) {
-            profile.firebase_uid = fbUser.uid;
+          profile.firebase_uid = fbUser.uid;
+          if (isAdminUid) {
+            profile.role = 'ADMIN';
           }
-          if (fbUser.photoURL && (!profile.avatar_url || profile.avatar_url.includes('unsplash.com'))) {
+          if (fbUser.photoURL) {
             profile.avatar_url = fbUser.photoURL;
           }
           setUser({ ...profile });
+        } else {
+          const newProfile = fleetMindStore.createUser({
+            id: `user-${fbUser.uid}`,
+            firebase_uid: fbUser.uid,
+            email: fbUser.email,
+            full_name: fbUser.displayName || (isAdminUid ? 'System Administrator' : fbUser.email.split('@')[0]),
+            role: isAdminUid ? 'ADMIN' : 'CUSTOMER',
+            avatar_url: fbUser.photoURL || undefined,
+            is_active: true,
+            is_verified: true,
+          });
+          setUser({ ...newProfile });
         }
       }
     });
@@ -141,10 +157,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      const isAdminUid = fbUid && SYSTEM_ADMIN_UIDS.includes(fbUid);
+
       // 2. Fetch authoritative user profile from database store
       let profile = fleetMindStore.getUserByEmail(email);
       if (!profile) {
-        const assignedRole: UserRole = email.includes('admin')
+        const assignedRole: UserRole = isAdminUid
+          ? 'ADMIN'
+          : email.includes('admin')
           ? 'ADMIN'
           : email.includes('driver')
           ? 'DRIVER'
@@ -170,6 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         if (fbUid) profile.firebase_uid = fbUid;
         if (fbPhoto) profile.avatar_url = fbPhoto;
+        if (isAdminUid) profile.role = 'ADMIN';
       }
 
       if (!profile.is_active) {
@@ -223,32 +244,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      const isAdminUid = fbUid && SYSTEM_ADMIN_UIDS.includes(fbUid);
+
       let profile = fleetMindStore.getUserByEmail(googleEmail);
       if (!profile) {
         profile = fleetMindStore.createUser({
           email: googleEmail,
           full_name: googleName,
-          role: 'CUSTOMER',
+          role: isAdminUid ? 'ADMIN' : 'CUSTOMER',
           avatar_url: googlePhoto,
           firebase_uid: fbUid,
           is_active: true,
           is_verified: true,
         });
 
-        // Ensure customer commercial entity exists
-        fleetMindStore.createCustomer({
-          user_id: profile.id,
-          contact_name: googleName,
-          company_name: `${googleName} Logistics`,
-          customer_type: 'BUSINESS',
-          email: googleEmail,
-          phone: '+91 98410 44556',
-          default_city: 'Bengaluru',
-        });
+        if (!isAdminUid) {
+          fleetMindStore.createCustomer({
+            user_id: profile.id,
+            contact_name: googleName,
+            company_name: `${googleName} Logistics`,
+            customer_type: 'BUSINESS',
+            email: googleEmail,
+            phone: '+91 98410 44556',
+            default_city: 'Bengaluru',
+          });
+        }
       } else {
         if (fbUid) profile.firebase_uid = fbUid;
         if (googlePhoto) profile.avatar_url = googlePhoto;
-        profile.role = 'CUSTOMER';
+        if (isAdminUid) {
+          profile.role = 'ADMIN';
+        }
       }
 
       setUser({ ...profile });

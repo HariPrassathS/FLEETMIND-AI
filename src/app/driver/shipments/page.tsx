@@ -112,10 +112,14 @@ export default function DriverShipmentsPage() {
       {assignedLorry && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-              <Gauge className="w-3.5 h-3.5 text-blue-600" /> Vehicle Capacity Utilization
-            </span>
-            <span className="text-[10px] font-bold text-slate-400">{assignedLorry.lorry_code}</span>
+            <div className="flex items-center gap-1.5">
+              <Truck className="w-4 h-4 text-blue-600" />
+              <span className="font-bold text-slate-800">{assignedLorry.lorry_code} ({assignedLorry.registration_number})</span>
+            </div>
+            <div className="text-xs font-medium bg-white px-2 py-1 rounded-lg shadow-sm border border-slate-100 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+              <span className="text-slate-600">Weight: {(totalWeight || 0).toLocaleString()} / {(assignedLorry.max_weight_kg || 0).toLocaleString()} kg</span>
+            </div>
           </div>
           <div className="space-y-2">
             <div>
@@ -241,9 +245,9 @@ export default function DriverShipmentsPage() {
                 </span>
               </div>
               <p className="text-xs font-semibold text-slate-700">{s.description}</p>
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {s.pickup_city}</span>
-                <span className="font-bold text-slate-700">{s.weight_kg.toLocaleString()} kg</span>
+              <div className="flex items-center justify-between text-xs mt-1">
+                <span className="text-slate-500">Vol: {s.volume_m3} m³</span>
+                <span className="font-black text-slate-900">{(s.weight_kg || 0).toLocaleString()} kg</span>
               </div>
             </div>
           ))}
@@ -267,7 +271,7 @@ export default function DriverShipmentsPage() {
               <p className="text-xs text-slate-600">{s.description}</p>
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>{s.pickup_city} → {s.destination_city}</span>
-                <span className="font-bold">{s.weight_kg.toLocaleString()} kg</span>
+                <span className="font-bold">{(s.weight_kg || 0).toLocaleString()} kg</span>
               </div>
             </div>
           ))}

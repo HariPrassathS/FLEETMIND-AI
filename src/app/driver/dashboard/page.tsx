@@ -262,7 +262,7 @@ export default function DriverDashboardPage() {
         {/* Route Details Bar */}
         <div className="pt-3 border-t border-white/15 flex items-center justify-between text-xs text-blue-100 font-medium">
           <span>Route: <strong className="text-white">{currentShipment ? `${currentShipment.pickup_city} → ${currentShipment.destination_city}` : 'No Active Assignment'}</strong></span>
-          <span>{currentShipment ? `${currentShipment.weight_kg.toLocaleString()} kg • ${currentShipment.category}` : '0 kg Payload'}</span>
+          <span>{currentShipment ? `${(currentShipment.weight_kg || 0).toLocaleString()} kg • ${currentShipment.category}` : '0 kg Payload'}</span>
         </div>
       </div>
 
@@ -294,7 +294,7 @@ export default function DriverDashboardPage() {
               {dynamicStop.address}
             </h3>
             <p className="text-xs text-slate-600 mt-1">
-              Consignment: <strong className="text-slate-900">{currentShipment.shipment_code}</strong> ({currentShipment.weight_kg.toLocaleString()} kg • {currentShipment.category})
+              Consignment: <strong className="text-slate-900">{currentShipment.shipment_code}</strong> ({(currentShipment.weight_kg || 0).toLocaleString()} kg • {currentShipment.category})
             </p>
           </div>
 

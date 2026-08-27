@@ -161,8 +161,8 @@ export default function DriverProfilePage() {
               <span className="font-bold text-blue-600">{assignedLorry.fuel_efficiency_km_per_l} km/L</span>
             </div>
             <div className="flex justify-between py-3">
-              <span className="text-slate-500 font-bold">Max Payload</span>
-              <span className="font-bold text-slate-900">{assignedLorry.max_weight_kg.toLocaleString()} kg / {assignedLorry.max_volume_m3} m³</span>
+              <span className="text-[10px] uppercase font-bold text-slate-500 mb-0.5 block">Max Capacity</span>
+              <span className="font-bold text-slate-900">{(assignedLorry.max_weight_kg || 0).toLocaleString()} kg / {assignedLorry.max_volume_m3 || 0} m³</span>
             </div>
           </div>
         ) : (

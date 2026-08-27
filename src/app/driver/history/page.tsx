@@ -136,7 +136,7 @@ export default function DriverHistoryPage() {
                   <span>{s.pickup_city} → <strong className="text-emerald-600">{s.destination_city}</strong></span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
-                  <span>{s.weight_kg.toLocaleString()} kg • {s.volume_m3} m³</span>
+                  <span>{(s.weight_kg || 0).toLocaleString()} kg • {s.volume_m3 || 0} m³</span>
                   {s.updated_at && <span>{new Date(s.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>}
                 </div>
               </div>

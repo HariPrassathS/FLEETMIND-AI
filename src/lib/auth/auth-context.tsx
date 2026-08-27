@@ -90,8 +90,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Sync with Firebase Auth state changes
+  // Sync with Firebase Auth state changes & Hydrate from Supabase
   useEffect(() => {
+    initSupabaseStoreSync(true);
     if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       setFirebaseUser(fbUser);

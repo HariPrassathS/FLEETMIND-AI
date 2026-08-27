@@ -995,19 +995,6 @@ class FleetMindStore {
     return this.shipments.find((s) => s.id === id || s.shipment_code === id);
   }
 
-  public getShipmentsByCustomer(emailOrId?: string): Shipment[] {
-    if (!emailOrId) return [...this.shipments];
-    const target = emailOrId.toLowerCase().trim();
-    return this.shipments.filter(
-      (s) =>
-        (s.customer_email && s.customer_email.toLowerCase() === target) ||
-        (s.sender_email && s.sender_email.toLowerCase() === target) ||
-        (s.customer_id && s.customer_id.toLowerCase() === target) ||
-        (target === 'customer@fleetmind.ai') ||
-        (!s.customer_email && target.includes('customer'))
-    );
-  }
-
   public createShipment(shipment: Partial<Shipment> & { description: string; weight_kg: number }, skipRemoteSync = false): Shipment {
     const count = this.shipments.length + 1;
     const newShipment: Shipment = {
@@ -1903,14 +1890,17 @@ class FleetMindStore {
     return newCust;
   }
 
-  public getShipmentsByCustomer(identifier: string): Shipment[] {
-    const term = identifier.toLowerCase();
+  public getShipmentsByCustomer(identifier?: string): Shipment[] {
+    if (!identifier) return [...this.shipments];
+    const term = identifier.toLowerCase().trim();
     return this.shipments.filter(
       (s) =>
         (s.customer_id && s.customer_id.toLowerCase() === term) ||
         (s.customer_email && s.customer_email.toLowerCase() === term) ||
         (s.sender_email && s.sender_email.toLowerCase() === term) ||
-        (s.customer_name && s.customer_name.toLowerCase().includes(term))
+        (s.customer_name && s.customer_name.toLowerCase().includes(term)) ||
+        (term === 'customer@fleetmind.ai') ||
+        (!s.customer_email && term.includes('customer'))
     );
   }
 

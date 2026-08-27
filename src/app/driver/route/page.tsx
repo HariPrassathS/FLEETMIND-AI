@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useAuth } from '../../../lib/auth/auth-context';
 import { fleetMindStore } from '../../../lib/db/store';
@@ -71,6 +72,7 @@ export default function DriverRoutePage() {
     : shipments.filter((s) => ['ASSIGNED', 'IN_TRANSIT', 'PICKED_UP', 'ACCEPTED', 'OUT_FOR_DELIVERY'].includes(s.status));
 
   const activeShipmentsList = effectiveShipments.filter(s => ['IN_TRANSIT', 'ASSIGNED', 'PICKED_UP', 'ACCEPTED', 'OUT_FOR_DELIVERY'].includes(s.status));
+  const isAllDelivered = effectiveShipments.length > 0 && activeShipmentsList.length === 0;
   const activeShipment = activeShipmentsList[0] || effectiveShipments[0] || null;
 
   // Build real dynamic stops from driver's active shipments
@@ -120,15 +122,17 @@ export default function DriverRoutePage() {
               <Truck className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] text-blue-200 font-bold uppercase tracking-wider block">Live Turn Corridor</span>
+              <span className="text-[10px] text-blue-200 font-bold uppercase tracking-wider block">
+                {isAllDelivered ? 'All Deliveries Handed Over' : 'Live Turn Corridor'}
+              </span>
               <h2 className="text-sm sm:text-base font-black text-white leading-tight truncate">
-                {activeShipment ? `${activeShipment.pickup_city || 'Origin'} → ${activeShipment.destination_city || 'Destination'}` : 'Corridor Standby'}
+                {isAllDelivered ? 'Corridor Run Completed ✓' : activeShipment ? `${activeShipment.pickup_city || 'Origin'} → ${activeShipment.destination_city || 'Destination'}` : 'Corridor Standby'}
               </h2>
             </div>
           </div>
-          <span className={`px-2.5 py-1 rounded-full text-[9px] font-black tracking-wider uppercase shrink-0 flex items-center gap-1 ${activeShipment ? 'bg-emerald-400 text-slate-950' : 'bg-slate-700 text-white'}`}>
-            {activeShipment && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />}
-            {activeShipment ? 'LIVE CORRIDOR' : 'STANDBY'}
+          <span className={`px-2.5 py-1 rounded-full text-[9px] font-black tracking-wider uppercase shrink-0 flex items-center gap-1 ${isAllDelivered ? 'bg-emerald-500 text-white shadow-sm' : activeShipment ? 'bg-emerald-400 text-slate-950' : 'bg-slate-700 text-white'}`}>
+            {!isAllDelivered && activeShipment && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />}
+            {isAllDelivered ? 'RUN COMPLETED ✓' : activeShipment ? 'LIVE CORRIDOR' : 'STANDBY'}
           </span>
         </div>
 
@@ -139,7 +143,7 @@ export default function DriverRoutePage() {
           </div>
           <div className="bg-white/10 rounded-xl p-2">
             <span className="text-[9px] text-blue-200 uppercase block font-bold">Stops</span>
-            <span className="text-xs sm:text-sm font-black">{completedStops.length} / {stops.length || 2}</span>
+            <span className="text-xs sm:text-sm font-black">{isAllDelivered ? stops.length : completedStops.length} / {stops.length || 2}</span>
           </div>
           <div className="bg-white/10 rounded-xl p-2">
             <span className="text-[9px] text-blue-200 uppercase block font-bold">Vehicle</span>
@@ -160,41 +164,75 @@ export default function DriverRoutePage() {
       <div className="rounded-3xl overflow-hidden border border-slate-200 shadow-card">
         <LiveTrackingMapbox
           origin={{
-            lat: activeShipment?.pickup_lat || 11.0168,
-            lng: activeShipment?.pickup_lng || 76.9558,
+            lat: activeShipment?.pickup_lat || 13.0827,
+            lng: activeShipment?.pickup_lng || 80.2707,
             city: activeShipment?.pickup_city || 'Origin',
-            address: activeShipment?.pickup_address || 'Pickup Facility',
+            address: activeShipment?.pickup_address || '',
           }}
           destination={{
-            lat: activeShipment?.destination_lat || 13.0827,
-            lng: activeShipment?.destination_lng || 80.2707,
+            lat: activeShipment?.destination_lat || 11.0168,
+            lng: activeShipment?.destination_lng || 76.9558,
             city: activeShipment?.destination_city || 'Destination',
-            address: activeShipment?.destination_address || 'Destination Facility',
+            address: activeShipment?.destination_address || '',
           }}
-          status="IN_TRANSIT"
-          driverName={`${user?.full_name || currentDriver?.name || 'Driver'} (You)`}
-          vehicleCode={assignedLorry ? `${assignedLorry.lorry_code} (${assignedLorry.registration_number})` : 'Vehicle Unassigned'}
-          etaText={nextStop?.arrival_eta ? `ETA: ${nextStop.arrival_eta}` : 'Scheduled'}
-          shipmentId={activeShipment?.id || 'standby'}
-          height="320px"
-          showControls={true}
+          initialDriverLocation={{
+            lat: currentDriver?.current_lat || assignedLorry?.current_lat || 13.0827,
+            lng: currentDriver?.current_lng || assignedLorry?.current_lng || 80.2707,
+            speed_kmh: isAllDelivered ? 0 : 45,
+            heading_deg: 240,
+          }}
+          status={isAllDelivered ? 'DELIVERED' : activeShipment?.status || 'IN_TRANSIT'}
+          driverName={currentDriver?.name || 'Driver'}
+          vehicleCode={assignedLorry?.lorry_code || 'L-01'}
+          height="220px"
+          showControls={false}
         />
       </div>
 
-      {/* Next Waypoint Target Action */}
-      {nextStop && (
-        <div className="bg-white rounded-2xl border-2 border-blue-500 shadow-card p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 uppercase flex items-center gap-1">
-              <Navigation className="w-3 h-3 text-blue-600" />
-              CURRENT TARGET WAYPOINT
+      {/* Next Action Stop Card or All Stops Completed Celebration */}
+      {isAllDelivered ? (
+        <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 border-2 border-emerald-200 rounded-3xl p-6 text-center space-y-3 shadow-card animate-in fade-in">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-md">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-black text-emerald-950">All Route Waypoints Completed ✓</h3>
+          <p className="text-xs text-emerald-800 font-semibold max-w-sm mx-auto leading-relaxed">
+            All scheduled pickup and delivery stops on this corridor have been safely completed and verified with cryptographic OTP signoff.
+          </p>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Link
+              href="/driver/dashboard"
+              className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl transition shadow-sm"
+            >
+              Driver Cockpit
+            </Link>
+            <Link
+              href="/driver/history"
+              className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-emerald-200 text-xs font-bold rounded-xl transition shadow-xs"
+            >
+              Delivery History
+            </Link>
+          </div>
+        </div>
+      ) : nextStop && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-4 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 flex items-center gap-1">
+              <Navigation className="w-3.5 h-3.5" /> Next Designated Waypoint
             </span>
-            <span className="text-xs font-bold text-slate-700">ETA {nextStop.arrival_eta}</span>
+            <span className="text-xs font-black text-slate-800">
+              ETA: {nextStop.arrival_eta || '15:00'}
+            </span>
           </div>
 
-          <div>
-            <h4 className="text-sm font-bold text-slate-900">{nextStop.address}</h4>
-            <p className="text-xs text-slate-500 mt-0.5">Contact: {nextStop.phone || '+91 98400 11223'}</p>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${nextStop.stop_type === 'PICKUP' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                {nextStop.stop_type}
+              </span>
+              <h4 className="text-xs font-black text-slate-900 truncate">{nextStop.address}</h4>
+            </div>
+            <p className="text-[11px] text-slate-500 font-medium">{nextStop.city} Terminal Node</p>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">

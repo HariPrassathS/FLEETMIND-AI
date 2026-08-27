@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../../../lib/auth/auth-context';
 import { fleetMindStore } from '../../../lib/db/store';
 import { DeliveryEventType } from '../../../types/database';
@@ -104,17 +105,21 @@ export default function DriverDashboardPage() {
            (assignedLorry && (s.assigned_lorry_id === assignedLorry.id || s.assigned_lorry_code === assignedLorry.lorry_code))
   );
 
-  // If driver has no specifically filtered shipments, pick active dispatches
+  // If driver has no specifically filtered shipments, pick all active dispatches
   const effectiveShipments = myShipments.length > 0
     ? myShipments
-    : shipments.filter((s) => ['ASSIGNED', 'IN_TRANSIT', 'PICKED_UP', 'ACCEPTED', 'OUT_FOR_DELIVERY'].includes(s.status));
+    : shipments.filter((s) => ['ASSIGNED', 'IN_TRANSIT', 'PICKED_UP', 'ACCEPTED', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(s.status));
+
+  // Filter ONLY non-delivered active shipments for current navigation
+  const activeShipments = effectiveShipments.filter((s) => s.status !== 'DELIVERED' && s.status !== 'CANCELLED');
+  const isAllCompleted = effectiveShipments.length > 0 && activeShipments.length === 0;
 
   // Find active route or active shipment
   const activeRoute = routes.find((r) => r.driver_id === currentDriver?.id) || routes[0] || null;
-  const currentShipment = effectiveShipments.find((s) => s.status === 'IN_TRANSIT' || s.status === 'ASSIGNED' || s.status === 'PICKED_UP' || s.status === 'ACCEPTED' || s.status === 'OUT_FOR_DELIVERY') || effectiveShipments[0] || null;
+  const currentShipment = activeShipments.find((s) => ['IN_TRANSIT', 'ASSIGNED', 'PICKED_UP', 'ACCEPTED', 'OUT_FOR_DELIVERY'].includes(s.status)) || activeShipments[0] || null;
 
   const isPickup = currentShipment ? (currentShipment.status === 'ASSIGNED' || currentShipment.status === 'ACCEPTED') : false;
-  const isDelivered = currentShipment ? (currentShipment.status === 'DELIVERED') : false;
+  const isDelivered = isAllCompleted || (currentShipment ? currentShipment.status === 'DELIVERED' : false);
 
   const dynamicStop = currentShipment ? {
     stop_type: isPickup ? 'PICKUP' : 'DELIVERY',
@@ -316,15 +321,15 @@ export default function DriverDashboardPage() {
               </p>
             </div>
           </div>
-          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase ${currentShipment ? 'bg-emerald-400 text-slate-950' : 'bg-slate-700 text-white'}`}>
-            {currentShipment ? (isPickup ? 'GOING TO PICKUP' : isDelivered ? 'DELIVERED' : 'IN TRANSIT') : 'STANDBY'}
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase ${isAllCompleted ? 'bg-emerald-500 text-white shadow-sm' : currentShipment ? (isPickup ? 'bg-amber-400 text-slate-950' : 'bg-emerald-400 text-slate-950') : 'bg-slate-700 text-white'}`}>
+            {isAllCompleted ? 'ALL RUNS COMPLETED ✓' : currentShipment ? (isPickup ? 'GOING TO PICKUP' : 'IN TRANSIT') : 'STANDBY'}
           </span>
         </div>
 
         {/* Route Details Bar */}
         <div className="pt-3 border-t border-white/15 flex items-center justify-between text-xs text-blue-100 font-medium">
-          <span>Route: <strong className="text-white">{currentShipment ? `${currentShipment.pickup_city} → ${currentShipment.destination_city}` : 'No Active Assignment'}</strong></span>
-          <span>{currentShipment ? `${(currentShipment.weight_kg || 0).toLocaleString()} kg • ${currentShipment.category}` : '0 kg Payload'}</span>
+          <span>Route: <strong className="text-white">{isAllCompleted ? 'All Consignments Safely Delivered ✓' : currentShipment ? `${currentShipment.pickup_city} → ${currentShipment.destination_city}` : 'No Active Assignment'}</strong></span>
+          <span>{isAllCompleted ? `${effectiveShipments.filter(s => s.status === 'DELIVERED').length} Completed Runs` : currentShipment ? `${(currentShipment.weight_kg || 0).toLocaleString()} kg • ${currentShipment.category}` : '0 kg Payload'}</span>
         </div>
       </div>
 
@@ -357,7 +362,7 @@ export default function DriverDashboardPage() {
         </button>
       </div>
 
-      {/* Next Stop Card / Standby Card */}
+      {/* Next Stop Card / All Deliveries Completed Card / Standby Card */}
       {currentShipment && dynamicStop ? (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
@@ -441,6 +446,34 @@ export default function DriverDashboardPage() {
               <AlertTriangle className="w-4 h-4 text-rose-600" />
               REPORT DELAY OR BREAKDOWN
             </button>
+          </div>
+        </div>
+      ) : isAllCompleted ? (
+        <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100/60 border-2 border-emerald-200 rounded-3xl p-6 shadow-card space-y-4 text-center animate-in fade-in">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-md">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base sm:text-lg font-black text-emerald-950">ALL DELIVERIES COMPLETED ✓</h3>
+            <p className="text-xs text-emerald-800 font-semibold max-w-sm mx-auto leading-relaxed">
+              All assigned consignments for lorry <strong>{assignedLorry?.lorry_code || 'L-01'}</strong> have been safely handed over with cryptographic OTP & digital signature proof.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <Link
+              href="/driver/history"
+              className="py-3 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-2xl shadow-sm transition flex items-center justify-center gap-1.5"
+            >
+              <Clock className="w-4 h-4" />
+              <span>View History ({effectiveShipments.filter(s => s.status === 'DELIVERED').length})</span>
+            </Link>
+            <Link
+              href="/driver/shipments"
+              className="py-3 bg-white hover:bg-slate-50 text-slate-800 border border-emerald-200 text-xs font-bold rounded-2xl shadow-xs transition flex items-center justify-center gap-1.5"
+            >
+              <Package className="w-4 h-4 text-emerald-600" />
+              <span>Cargo Manifest</span>
+            </Link>
           </div>
         </div>
       ) : (

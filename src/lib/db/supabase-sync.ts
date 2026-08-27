@@ -182,52 +182,67 @@ export async function initSupabaseStoreSync(force = false) {
       );
 
       fleetMindStore.replaceShipments([
-        ...supabaseShipments.map((s: any) => ({
-          id: s.id,
-          shipment_code: s.shipment_code,
-          customer_id: s.customer_id || 'cust-direct',
-          customer_name: s.customer_name || 'Commercial Client',
-          customer_email: s.customer_email || '',
-          sender_name: s.sender_name,
-          sender_company: s.sender_company,
-          sender_phone: s.sender_phone,
-          sender_email: s.sender_email,
-          receiver_name: s.receiver_name,
-          receiver_company: s.receiver_company,
-          receiver_phone: s.receiver_phone,
-          receiver_email: s.receiver_email,
-          description: s.description || 'Commercial Freight',
-          weight_kg: Number(s.weight_kg),
-          volume_m3: Number(s.volume_m3 || 1),
-          package_count: Number(s.package_count || 1),
-          fragile: s.fragile || false,
-          category: s.category || 'GENERAL',
-          priority: s.priority || 'MEDIUM',
-          special_instructions: s.special_instructions,
-          pickup_address: s.pickup_address || '',
-          pickup_city: s.pickup_city || '',
-          pickup_lat: Number(s.pickup_lat || 13.0827),
-          pickup_lng: Number(s.pickup_lng || 80.2707),
-          pickup_time: s.pickup_time,
-          destination_address: s.destination_address || '',
-          destination_city: s.destination_city || '',
-          destination_lat: Number(s.destination_lat || 12.9716),
-          destination_lng: Number(s.destination_lng || 77.5946),
-          delivery_deadline: s.delivery_deadline,
-          status: s.status || 'PENDING',
-          assigned_lorry_id: s.assigned_lorry_id,
-          assigned_lorry_code: s.assigned_lorry_code,
-          assigned_driver_id: s.assigned_driver_id,
-          assigned_driver_name: s.assigned_driver_name,
-          otp_code: s.otp_code,
-          otp_verified_at: s.otp_verified_at,
-          signature_path: s.signature_path,
-          proof_of_delivery_path: s.proof_of_delivery_path,
-          receiver_verified_name: s.receiver_verified_name,
-          delivery_notes: s.delivery_notes,
-          created_at: s.created_at,
-          updated_at: s.updated_at,
-        })),
+        ...supabaseShipments.map((s: any) => {
+          const existingLocal = fleetMindStore.getShipmentById(s.id) || fleetMindStore.getShipmentById(s.shipment_code);
+          const isLocalDelivered = existingLocal?.status === 'DELIVERED';
+          const resolvedStatus = isLocalDelivered ? 'DELIVERED' : (s.status || 'PENDING');
+
+          const mappedShipment: Shipment = {
+            id: s.id,
+            shipment_code: s.shipment_code,
+            customer_id: s.customer_id || existingLocal?.customer_id || 'cust-direct',
+            customer_name: s.customer_name || existingLocal?.customer_name || 'Commercial Client',
+            customer_email: s.customer_email || existingLocal?.customer_email || '',
+            sender_name: s.sender_name || existingLocal?.sender_name || 'Shipper Contact',
+            sender_company: s.sender_company || existingLocal?.sender_company,
+            sender_phone: s.sender_phone || existingLocal?.sender_phone,
+            sender_email: s.sender_email || existingLocal?.sender_email,
+            receiver_name: s.receiver_name || existingLocal?.receiver_name || 'Consignee Receiver',
+            receiver_company: s.receiver_company || existingLocal?.receiver_company,
+            receiver_phone: s.receiver_phone || existingLocal?.receiver_phone,
+            receiver_email: s.receiver_email || existingLocal?.receiver_email,
+            description: s.description || existingLocal?.description || 'Commercial Freight',
+            weight_kg: Number(s.weight_kg || existingLocal?.weight_kg || 100),
+            volume_m3: Number(s.volume_m3 || existingLocal?.volume_m3 || 1),
+            package_count: Number(s.package_count || existingLocal?.package_count || 1),
+            fragile: s.fragile !== undefined ? s.fragile : (existingLocal?.fragile || false),
+            category: s.category || existingLocal?.category || 'GENERAL',
+            priority: s.priority || existingLocal?.priority || 'MEDIUM',
+            special_instructions: s.special_instructions || existingLocal?.special_instructions,
+            pickup_address: s.pickup_address || existingLocal?.pickup_address || '',
+            pickup_city: s.pickup_city || existingLocal?.pickup_city || '',
+            pickup_lat: Number(s.pickup_lat || existingLocal?.pickup_lat || 13.0827),
+            pickup_lng: Number(s.pickup_lng || existingLocal?.pickup_lng || 80.2707),
+            pickup_time: s.pickup_time || existingLocal?.pickup_time,
+            destination_address: s.destination_address || existingLocal?.destination_address || '',
+            destination_city: s.destination_city || existingLocal?.destination_city || '',
+            destination_lat: Number(s.destination_lat || existingLocal?.destination_lat || 12.9716),
+            destination_lng: Number(s.destination_lng || existingLocal?.destination_lng || 77.5946),
+            delivery_deadline: s.delivery_deadline || existingLocal?.delivery_deadline || new Date().toISOString(),
+            actual_delivery_time: s.actual_delivery_time || existingLocal?.actual_delivery_time,
+            status: resolvedStatus,
+            assigned_lorry_id: s.assigned_lorry_id || existingLocal?.assigned_lorry_id,
+            assigned_lorry_code: s.assigned_lorry_code || existingLocal?.assigned_lorry_code,
+            assigned_driver_id: s.assigned_driver_id || existingLocal?.assigned_driver_id,
+            assigned_driver_name: s.assigned_driver_name || existingLocal?.assigned_driver_name,
+            otp_code: s.otp_code || existingLocal?.otp_code,
+            otp_verified_at: s.otp_verified_at || existingLocal?.otp_verified_at,
+            signature_path: s.signature_path || existingLocal?.signature_path,
+            proof_of_delivery_path: s.proof_of_delivery_path || existingLocal?.proof_of_delivery_path,
+            receiver_verified_name: s.receiver_verified_name || existingLocal?.receiver_verified_name,
+            delivery_notes: s.delivery_notes || existingLocal?.delivery_notes,
+            estimated_cost: Number(s.estimated_cost || existingLocal?.estimated_cost || 0) || undefined,
+            created_at: s.created_at || existingLocal?.created_at,
+            updated_at: isLocalDelivered && existingLocal ? existingLocal.updated_at : s.updated_at,
+          };
+
+          // If local was DELIVERED but remote wasn't, re-push to Supabase so it persists
+          if (isLocalDelivered && s.status !== 'DELIVERED') {
+            syncShipmentToSupabase(mappedShipment);
+          }
+
+          return mappedShipment;
+        }),
         ...localOnlyShipments,
       ]);
 
@@ -436,10 +451,40 @@ export async function syncShipmentToSupabase(shipment: Shipment): Promise<void> 
   if (!supabase) return;
 
   try {
-    const payload = {
+    // Resolve real lorry UUID
+    let lorryId: string | null = null;
+    if (shipment.assigned_lorry_id) {
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(shipment.assigned_lorry_id)) {
+        lorryId = shipment.assigned_lorry_id;
+      } else {
+        const matchingLorry = fleetMindStore.getLorries().find(
+          (l) => l.id === shipment.assigned_lorry_id || l.lorry_code === shipment.assigned_lorry_code
+        );
+        if (matchingLorry && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(matchingLorry.id)) {
+          lorryId = matchingLorry.id;
+        }
+      }
+    }
+
+    // Resolve real driver UUID
+    let driverId: string | null = null;
+    if (shipment.assigned_driver_id) {
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(shipment.assigned_driver_id)) {
+        driverId = shipment.assigned_driver_id;
+      } else {
+        const matchingDriver = fleetMindStore.getDrivers().find(
+          (d) => d.id === shipment.assigned_driver_id || d.name === shipment.assigned_driver_name
+        );
+        if (matchingDriver && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(matchingDriver.id)) {
+          driverId = matchingDriver.id;
+        }
+      }
+    }
+
+    const payload: any = {
       id: ensureUUID(shipment.id),
       shipment_code: shipment.shipment_code,
-      customer_id: shipment.customer_id && !shipment.customer_id.startsWith('cust-') && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(shipment.customer_id) ? shipment.customer_id : null,
+      customer_id: shipment.customer_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(shipment.customer_id) ? shipment.customer_id : null,
       customer_name: shipment.customer_name || 'Commercial Shipper',
       customer_email: shipment.customer_email || 'customer@fleetmind.ai',
       sender_name: shipment.sender_name || shipment.customer_name || 'Commercial Shipper',
@@ -460,6 +505,7 @@ export async function syncShipmentToSupabase(shipment: Shipment): Promise<void> 
       destination_lat: Number(shipment.destination_lat || 11.0168),
       destination_lng: Number(shipment.destination_lng || 76.9558),
       delivery_deadline: shipment.delivery_deadline || new Date(Date.now() + 86400000).toISOString(),
+      actual_delivery_time: shipment.actual_delivery_time || (shipment.status === 'DELIVERED' ? new Date().toISOString() : null),
       description: shipment.description || 'Commercial Freight',
       category: shipment.category || 'GENERAL',
       weight_kg: Math.max(1, Number(shipment.weight_kg || 100)),
@@ -469,9 +515,9 @@ export async function syncShipmentToSupabase(shipment: Shipment): Promise<void> 
       priority: shipment.priority || 'MEDIUM',
       special_instructions: shipment.special_instructions || null,
       status: shipment.status || 'PENDING_REVIEW',
-      assigned_lorry_id: shipment.assigned_lorry_id ? ensureUUID(shipment.assigned_lorry_id) : null,
+      assigned_lorry_id: lorryId,
       assigned_lorry_code: shipment.assigned_lorry_code || null,
-      assigned_driver_id: shipment.assigned_driver_id ? ensureUUID(shipment.assigned_driver_id) : null,
+      assigned_driver_id: driverId,
       assigned_driver_name: shipment.assigned_driver_name || null,
       otp_code: shipment.otp_code || null,
       otp_verified_at: shipment.otp_verified_at || null,
@@ -482,12 +528,53 @@ export async function syncShipmentToSupabase(shipment: Shipment): Promise<void> 
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from('shipments').upsert(payload, { onConflict: 'shipment_code' });
+    let { error } = await supabase.from('shipments').upsert(payload, { onConflict: 'shipment_code' });
+    
+    // Auto-retry without strict foreign key references if reference validation failed
+    if (error && (error.message.includes('foreign key') || error.code === '23503')) {
+      payload.assigned_lorry_id = null;
+      payload.assigned_driver_id = null;
+      payload.customer_id = null;
+      const retryRes = await supabase.from('shipments').upsert(payload, { onConflict: 'shipment_code' });
+      error = retryRes.error;
+    }
+
     if (error) {
       console.warn('[Supabase Sync] Shipments upsert notice:', error.message);
     }
   } catch (err) {
     console.warn('[Supabase Sync] Failed to sync shipment to Supabase:', err);
+  }
+}
+
+/**
+ * Persists an expense logged by driver or dispatcher to Supabase PostgreSQL.
+ */
+export async function syncExpenseToSupabase(expense: any): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+
+  try {
+    const payload = {
+      id: ensureUUID(expense.id),
+      trip_id: expense.trip_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(expense.trip_id) ? expense.trip_id : null,
+      lorry_id: expense.lorry_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(expense.lorry_id) ? expense.lorry_id : null,
+      lorry_code: expense.lorry_code || 'L-01',
+      category: expense.category || 'FUEL',
+      amount_inr: Math.max(1, Number(expense.amount_inr || 100)),
+      date: expense.date || new Date().toISOString(),
+      description: expense.description || 'On-road expense',
+      receipt_url: expense.receipt_url || null,
+    };
+
+    const { error } = await supabase.from('expenses').upsert(payload, { onConflict: 'id' });
+    if (error && error.message.includes('foreign key')) {
+      payload.trip_id = null;
+      payload.lorry_id = null;
+      await supabase.from('expenses').upsert(payload, { onConflict: 'id' });
+    }
+  } catch (err) {
+    console.warn('[Supabase Sync] Failed to sync expense to Supabase:', err);
   }
 }
 

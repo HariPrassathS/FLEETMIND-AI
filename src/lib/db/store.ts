@@ -32,6 +32,7 @@ import {
   deleteVehicleFromSupabase,
   deleteDriverFromSupabase,
   deleteProfileFromSupabase,
+  syncExpenseToSupabase,
   initSupabaseStoreSync,
   ensureUUID,
 } from './supabase-sync';
@@ -2889,6 +2890,7 @@ class FleetMindStore {
     });
 
     this.notify('EXPENSE_CREATED', newExp);
+    syncExpenseToSupabase(newExp);
     return newExp;
   }
 

@@ -32,9 +32,7 @@ export default function CreateShipmentPage() {
   const [activeMode, setActiveMode] = useState<'ai' | 'manual'>('ai');
 
   // AI Extraction State
-  const [aiPrompt, setAiPrompt] = useState(
-    'I need to send 500 kg of electronics from Coimbatore to Chennai tomorrow before 5 PM. Sender is ABC Electronics and receiver is XYZ Electronics.'
-  );
+  const [aiPrompt, setAiPrompt] = useState('');
   const [isAiParsing, setIsAiParsing] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedShipment | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -43,45 +41,45 @@ export default function CreateShipmentPage() {
   const [form, setForm] = useState({
     // Sender
     senderType: 'BUSINESS' as 'PERSON' | 'BUSINESS',
-    senderName: user?.full_name || 'Rajesh Kumar',
-    senderCompany: 'ABC Electronics India Pvt Ltd',
-    senderEmail: user?.email || 'customer@fleetmind.ai',
-    senderPhone: '+91 98410 44556',
-    senderAddressLine1: '42 Peenya Industrial Area, Phase II',
-    senderAddressLine2: 'Near SIDCO Freight Gate',
-    senderCity: 'Coimbatore',
-    senderState: 'Tamil Nadu',
-    senderPostalCode: '641021',
+    senderName: user?.full_name || '',
+    senderCompany: '',
+    senderEmail: user?.email || '',
+    senderPhone: '',
+    senderAddressLine1: '',
+    senderAddressLine2: '',
+    senderCity: '',
+    senderState: '',
+    senderPostalCode: '',
     senderCountry: 'India',
-    pickupLat: 11.0168,
-    pickupLng: 76.9558,
+    pickupLat: 13.0827,
+    pickupLng: 80.2707,
 
     // Receiver
     receiverType: 'BUSINESS' as 'PERSON' | 'BUSINESS',
-    receiverName: 'Rahul Kumar',
-    receiverCompany: 'XYZ Electronics Distributors',
-    receiverEmail: 'rahul.kumar@xyzelectronics.in',
-    receiverPhone: '+91 98401 12345',
-    receiverAddressLine1: '108 Mount Road, Guindy Commercial Hub',
-    receiverAddressLine2: 'Dock 4, Industrial Bay',
-    receiverCity: 'Chennai',
-    receiverState: 'Tamil Nadu',
-    receiverPostalCode: '600032',
+    receiverName: '',
+    receiverCompany: '',
+    receiverEmail: '',
+    receiverPhone: '',
+    receiverAddressLine1: '',
+    receiverAddressLine2: '',
+    receiverCity: '',
+    receiverState: '',
+    receiverPostalCode: '',
     receiverCountry: 'India',
-    deliveryLat: 13.0827,
-    deliveryLng: 80.2707,
+    deliveryLat: 12.9716,
+    deliveryLng: 77.5946,
 
     // Package Details
-    description: 'Precision Printed Circuit Boards & IC Modules (500 kg)',
-    category: 'ELECTRONICS' as ShipmentCategory,
-    weightKg: 500,
-    volumeM3: 1.8,
-    packageCount: 14,
-    fragile: true,
-    priority: 'HIGH' as ShipmentPriority,
+    description: '',
+    category: 'GENERAL' as ShipmentCategory,
+    weightKg: 100,
+    volumeM3: 0.5,
+    packageCount: 1,
+    fragile: false,
+    priority: 'MEDIUM' as ShipmentPriority,
     pickupTime: new Date(Date.now() + 2 * 3600 * 1000).toISOString().slice(0, 16),
     deliveryDeadline: new Date(Date.now() + 26 * 3600 * 1000).toISOString().slice(0, 16),
-    specialInstructions: 'Handle with extreme ESD care. Temperature controlled lorry preferred.',
+    specialInstructions: '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -168,14 +166,14 @@ export default function CreateShipmentPage() {
       pickup_address: parsedData.pickup_address,
       destination_city: parsedData.destination_city,
       destination_address: parsedData.destination_address,
-      sender_name: parsedData.sender_name || user?.full_name || 'Rajesh Kumar',
-      sender_company: parsedData.sender_company || 'ABC Electronics India Pvt Ltd',
-      sender_email: user?.email || 'customer@fleetmind.ai',
-      sender_phone: parsedData.sender_phone || '+91 98410 44556',
-      receiver_name: parsedData.receiver_name || 'Rahul Kumar',
-      receiver_company: parsedData.receiver_company || 'XYZ Electronics Distributors',
-      receiver_email: 'rahul.kumar@xyzelectronics.in',
-      receiver_phone: '+91 98401 12345',
+      sender_name: parsedData.sender_name || user?.full_name || '',
+      sender_company: parsedData.sender_company || '',
+      sender_email: user?.email || '',
+      sender_phone: parsedData.sender_phone || '',
+      receiver_name: parsedData.receiver_name || '',
+      receiver_company: parsedData.receiver_company || '',
+      receiver_email: '',
+      receiver_phone: parsedData.receiver_phone || '',
       status: 'PENDING_DISPATCH',
     });
 

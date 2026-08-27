@@ -436,23 +436,21 @@ export default function ShipmentsPage() {
                               Review Details
                             </button>
 
-                            {isPending && (
-                              <button
-                                onClick={() => handleAccept(s.id)}
-                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl shadow-sm transition text-[11px] flex items-center gap-1"
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                                Accept
-                              </button>
-                            )}
-
-                            {s.status === 'ACCEPTED' && (
+                            {!s.assigned_lorry_id ? (
                               <button
                                 onClick={() => setAssignShipment(s)}
-                                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-xl shadow-sm transition text-[11px] flex items-center gap-1"
+                                className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black rounded-xl shadow-sm transition text-[11px] flex items-center gap-1.5"
                               >
                                 <Truck className="w-3.5 h-3.5" />
-                                Assign Carrier
+                                Assign Vehicle
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setAssignShipment(s)}
+                                className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-black rounded-xl transition text-[11px] flex items-center gap-1"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                {s.assigned_lorry_code || 'Assigned'} (Re-assign)
                               </button>
                             )}
 
@@ -716,6 +714,21 @@ export default function ShipmentsPage() {
                       Accept Shipment & Select Carrier
                     </button>
                   )}
+
+                  {!reviewShipment.assigned_lorry_id && reviewShipment.status !== 'PENDING_REVIEW' && reviewShipment.status !== 'PENDING' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = reviewShipment;
+                        setReviewShipment(null);
+                        setAssignShipment(target);
+                      }}
+                      className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black rounded-xl shadow-md transition flex items-center gap-1.5"
+                    >
+                      <Truck className="w-4 h-4" />
+                      Assign Vehicle & Driver Now
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -728,12 +741,12 @@ export default function ShipmentsPage() {
             <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col my-auto overflow-hidden animate-in fade-in">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-sm">
                     <Truck className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-base font-black text-slate-900">
-                      Select Carrier & Driver: {assignShipment.shipment_code}
+                      Allocate Carrier & Pilot: {assignShipment.shipment_code}
                     </h3>
                     <span className="text-xs text-slate-500 font-medium">
                       Required: {assignShipment.weight_kg.toLocaleString()} kg / {assignShipment.volume_m3} m³ (
@@ -749,8 +762,9 @@ export default function ShipmentsPage() {
 
               <form onSubmit={handleAssignLorry} className="flex-1 flex flex-col overflow-hidden">
                 <div className="p-6 overflow-y-auto space-y-4 flex-1">
-                  <div className="text-xs font-bold text-slate-600">
-                    Ranked by Deterministic Capacity, Fuel Efficiency, Driver Availability, and Proximity:
+                  <div className="text-xs font-bold text-slate-600 flex items-center justify-between">
+                    <span>Ranked by Capacity, Fuel Efficiency, Driver Availability, and Proximity:</span>
+                    <span className="text-[11px] text-blue-600 font-bold">Click any vehicle to select</span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -765,10 +779,10 @@ export default function ShipmentsPage() {
                           }}
                           className={`p-4 rounded-3xl border-2 transition cursor-pointer relative space-y-3 ${
                             isSelected
-                              ? 'border-blue-600 bg-blue-50/40 shadow-card'
+                              ? 'border-blue-600 bg-blue-50/40 shadow-card ring-2 ring-blue-600/30'
                               : cand.is_feasible
                               ? 'border-slate-200 bg-white hover:border-blue-300'
-                              : 'border-slate-200 bg-slate-50 opacity-60'
+                              : 'border-slate-200 bg-slate-50 opacity-70'
                           }`}
                         >
                           {/* Top: Lorry image & info */}
@@ -831,7 +845,7 @@ export default function ShipmentsPage() {
                               <strong className="text-blue-600 font-black">{cand.lorry.fuel_efficiency_km_per_l} km/L</strong>
                             </div>
                             <div>
-                              <span className="text-slate-400 font-bold block">Driver</span>
+                              <span className="text-slate-400 font-bold block">Pilot</span>
                               <strong className="text-slate-900 font-bold truncate block">{cand.driver?.name || 'Unassigned'}</strong>
                             </div>
                             <div>
@@ -860,15 +874,31 @@ export default function ShipmentsPage() {
                   </div>
                 </div>
 
-                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
-                  <div className="text-xs">
+                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                  <div className="flex flex-wrap items-center gap-3 text-xs">
                     {selectedLorryId ? (
                       <span className="font-bold text-slate-900">
-                        Selected: <strong className="text-blue-600">{selectedLorryId}</strong>
+                        Selected Carrier: <strong className="text-blue-600 font-black">{selectedLorryId}</strong>
                       </span>
                     ) : (
                       <span className="text-slate-400">Please click a candidate vehicle above to assign</span>
                     )}
+
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-500 font-bold">Pilot:</span>
+                      <select
+                        value={selectedDriverId}
+                        onChange={(e) => setSelectedDriverId(e.target.value)}
+                        className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                      >
+                        <option value="">Default Vehicle Pilot</option>
+                        {drivers.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name} ({d.availability_status})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -882,7 +912,7 @@ export default function ShipmentsPage() {
                     <button
                       type="submit"
                       disabled={!selectedLorryId}
-                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black rounded-xl shadow-md transition flex items-center gap-1.5"
+                      className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-black rounded-xl shadow-md transition flex items-center gap-1.5"
                     >
                       <Check className="w-4 h-4" />
                       Confirm Assignment & Dispatch

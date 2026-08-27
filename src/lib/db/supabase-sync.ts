@@ -535,6 +535,7 @@ export async function syncDriverToSupabase(driver: Driver): Promise<void> {
   try {
     const payload = {
       id: ensureUUID(driver.id),
+      user_id: driver.user_id && !driver.user_id.startsWith('cust-') ? ensureUUID(driver.user_id) : null,
       name: driver.name,
       phone: driver.phone,
       license_number: driver.license_number,

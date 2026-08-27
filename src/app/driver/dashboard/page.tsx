@@ -71,7 +71,10 @@ export default function DriverDashboardPage() {
 
   // Find current driver from the store
   const currentDriver = drivers.find(
-    (d) => d.email === user?.email || (user?.email && d.email?.toLowerCase() === user.email.toLowerCase()) || (user?.full_name && d.name?.toLowerCase() === user.full_name.toLowerCase()) || d.id === user?.id
+    (d) => (user?.email && d.email && d.email.toLowerCase() === user.email.toLowerCase()) ||
+           (user?.full_name && d.name && d.name.toLowerCase() === user.full_name.toLowerCase()) ||
+           (user?.id && (d.id === user.id || d.user_id === user.id)) ||
+           (user?.email && d.phone && user.email.includes(d.phone.replace(/\D/g, '')))
   ) || null;
 
   // Find lorry assigned to this driver

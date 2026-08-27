@@ -17,6 +17,7 @@ export type ShipmentStatus =
   | 'ARRIVED_PICKUP'
   | 'PICKED_UP'
   | 'IN_TRANSIT'
+  | 'DISPATCHED'
   | 'ARRIVED_DESTINATION'
   | 'ARRIVED'
   | 'OUT_FOR_DELIVERY'
@@ -87,6 +88,7 @@ export interface Lorry {
   current_address?: string;
   status: LorryStatus;
   driver_id?: string | null;
+  assigned_driver_id?: string | null;
   assigned_driver_name?: string;
   is_refrigerated?: boolean;
   engine_status?: 'ON' | 'OFF' | 'UNKNOWN';
@@ -99,6 +101,7 @@ export interface Driver {
   id: string;
   user_id?: string;
   name: string;
+  email?: string;
   phone: string;
   license_number: string;
   current_lat: number;
@@ -202,6 +205,7 @@ export interface RouteStop {
   latitude: number;
   longitude: number;
   address: string;
+  phone?: string;
   arrival_eta: string; // ISO string
   deadline: string; // ISO string
   status: StopStatus;

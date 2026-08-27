@@ -30,10 +30,11 @@ export default function DriverDashboardPage() {
   const [routes, setRoutes] = useState(fleetMindStore.getRoutes());
   const [shipments, setShipments] = useState(fleetMindStore.getShipments());
   const [lorries, setLorries] = useState(fleetMindStore.getLorries());
+  const [drivers, setDrivers] = useState(fleetMindStore.getDrivers());
 
   // Delivery Verification State
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
-  const [verifStep, setVerifStep] = useState<1 | 2 | 3 | 4>(1); // 1: Send OTP, 2: Enter OTP, 3: Signature & Photo, 4: Confirmed
+  const [verifStep, setVerifStep] = useState<1 | 2 | 3 | 4>(1);
   const [otpInfo, setOtpInfo] = useState<{ otp_code: string; expires_at: string; masked_email: string; masked_phone: string } | null>(null);
   const [enteredOtp, setEnteredOtp] = useState('');
   const [otpError, setOtpError] = useState<string | null>(null);
@@ -41,9 +42,9 @@ export default function DriverDashboardPage() {
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   // POD details
-  const [receiverName, setReceiverName] = useState('Rahul Kumar');
-  const [deliveryNotes, setDeliveryNotes] = useState('Delivered in pristine condition with verified receiver signoff.');
-  const [photoDataUrl, setPhotoDataUrl] = useState('https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600');
+  const [receiverName, setReceiverName] = useState('');
+  const [deliveryNotes, setDeliveryNotes] = useState('');
+  const [photoDataUrl, setPhotoDataUrl] = useState('');
 
   // Signature canvas
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -52,7 +53,7 @@ export default function DriverDashboardPage() {
 
   // Delay modal
   const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
-  const [delayReason, setDelayReason] = useState('Heavy traffic congestion near Sriperumbudur toll plaza');
+  const [delayReason, setDelayReason] = useState('');
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,14 +61,30 @@ export default function DriverDashboardPage() {
       setRoutes(fleetMindStore.getRoutes());
       setShipments(fleetMindStore.getShipments());
       setLorries(fleetMindStore.getLorries());
+      setDrivers(fleetMindStore.getDrivers());
     });
     return unsub;
   }, []);
 
-  const activeRoute = routes.find((r) => r.driver_id === user?.id || r.route_code.includes('CHN') || r.stops.length > 0) || routes[0];
-  const assignedLorry = lorries.find((l) => l.id === activeRoute?.lorry_id || l.lorry_code === 'L-11');
+  // Find current driver from the store
+  const currentDriver = drivers.find(
+    (d) => d.email === user?.email || d.name === user?.full_name || d.id === user?.id
+  ) || drivers[0];
+
+  // Find lorry assigned to this driver
+  const assignedLorry = lorries.find(
+    (l) => l.assigned_driver_id === currentDriver?.id || l.id === currentDriver?.assigned_lorry_id
+  ) || lorries.find((l) => l.id === routes[0]?.lorry_id) || lorries[0];
+
+  // Find active route for this driver
+  const activeRoute = routes.find((r) => r.driver_id === currentDriver?.id) || routes.find((r) => r.stops.length > 0) || routes[0];
   const nextStop = activeRoute?.stops.find((s) => s.status !== 'COMPLETED') || activeRoute?.stops[0];
-  const currentShipment = shipments.find((s) => s.id === nextStop?.shipment_id || s.shipment_code === 'S-1042') || shipments[0];
+
+  // Get shipments assigned to this driver
+  const myShipments = shipments.filter(
+    (s) => s.assigned_driver_id === currentDriver?.id || s.assigned_driver_name === currentDriver?.name || s.assigned_lorry_id === assignedLorry?.id
+  );
+  const currentShipment = myShipments.find((s) => s.id === nextStop?.shipment_id) || myShipments.find((s) => s.status === 'IN_TRANSIT' || s.status === 'DISPATCHED') || myShipments[0] || shipments[0];
 
   const handleDriverAction = (eventType: DeliveryEventType, notes?: string, recipient?: string) => {
     if (!activeRoute || !nextStop) return;

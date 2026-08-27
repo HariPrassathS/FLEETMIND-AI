@@ -1,58 +1,254 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../../lib/auth/auth-context';
 import { fleetMindStore } from '../../../lib/db/store';
-import { Package, Truck, ShieldCheck, MapPin } from 'lucide-react';
+import { Shipment, Driver, Lorry, Trip } from '../../../lib/optimization/types';
+import {
+  Package,
+  Truck,
+  MapPin,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  Navigation,
+  ArrowRight,
+  Fuel,
+  Gauge,
+  TrendingUp,
+  Activity,
+  Box,
+  Calendar,
+} from 'lucide-react';
 
 export default function DriverShipmentsPage() {
-  const shipments = fleetMindStore.getShipments();
-  const loadedShipments = shipments.filter(
-    (s) => s.status === 'IN_TRANSIT' || s.shipment_code === 'S-1042' || s.shipment_code === 'S-1043'
+  const { user } = useAuth();
+  const [shipments, setShipments] = useState<Shipment[]>(fleetMindStore.getShipments());
+  const [drivers, setDrivers] = useState<Driver[]>(fleetMindStore.getDrivers());
+  const [lorries, setLorries] = useState<Lorry[]>(fleetMindStore.getLorries());
+  const [trips, setTrips] = useState<Trip[]>(fleetMindStore.getTrips());
+
+  useEffect(() => {
+    const unsub = fleetMindStore.subscribe(() => {
+      setShipments(fleetMindStore.getShipments());
+      setDrivers(fleetMindStore.getDrivers());
+      setLorries(fleetMindStore.getLorries());
+      setTrips(fleetMindStore.getTrips());
+    });
+    return unsub;
+  }, []);
+
+  // Find the current driver's data
+  const currentDriver = drivers.find(
+    (d) => d.email === user?.email || d.name === user?.full_name || d.id === user?.id
+  ) || drivers[0];
+
+  // Get lorry assigned to this driver
+  const assignedLorry = lorries.find(
+    (l) => l.assigned_driver_id === currentDriver?.id || l.id === currentDriver?.assigned_lorry_id
+  ) || lorries[0];
+
+  // Get shipments assigned to this driver's lorry or driver
+  const myShipments = shipments.filter(
+    (s) =>
+      s.assigned_driver_id === currentDriver?.id ||
+      s.assigned_lorry_id === assignedLorry?.id ||
+      s.assigned_driver_name === currentDriver?.name
   );
 
+  const inTransit = myShipments.filter((s) => s.status === 'IN_TRANSIT' || s.status === 'DISPATCHED');
+  const pending = myShipments.filter((s) => s.status === 'ACCEPTED' || s.status === 'PENDING_REVIEW');
+  const delivered = myShipments.filter((s) => s.status === 'DELIVERED');
+
+  const totalWeight = myShipments.reduce((sum, s) => sum + (s.weight_kg || 0), 0);
+  const totalVolume = myShipments.reduce((sum, s) => sum + (s.volume_m3 || 0), 0);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'IN_TRANSIT': case 'DISPATCHED': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'DELIVERED': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'ACCEPTED': return 'bg-amber-100 text-amber-800 border-amber-200';
+      case 'PENDING': case 'PENDING_REVIEW': return 'bg-slate-100 text-slate-700 border-slate-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+    }
+  };
+
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <div>
-        <h2 className="text-lg font-bold text-slate-900">Cargo Manifest in Lorry L-11</h2>
-        <p className="text-xs text-slate-500">Currently carrying {loadedShipments.length} consignments (5,000 kg total payload)</p>
+    <div className="p-4 sm:p-6 space-y-5 max-w-lg mx-auto">
+      {/* Cargo Summary Header */}
+      <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl p-5 text-white shadow-xl">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+            <Package className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold">Cargo Manifest</h2>
+            <p className="text-xs text-blue-200">
+              {assignedLorry ? `Vehicle ${assignedLorry.lorry_code} (${assignedLorry.registration_number})` : 'No vehicle assigned'}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 text-center">
+            <span className="text-[10px] text-blue-200 font-bold uppercase block">Active</span>
+            <span className="text-xl font-black">{inTransit.length}</span>
+          </div>
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 text-center">
+            <span className="text-[10px] text-blue-200 font-bold uppercase block">Payload</span>
+            <span className="text-xl font-black">{totalWeight > 1000 ? `${(totalWeight / 1000).toFixed(1)}T` : `${totalWeight}kg`}</span>
+          </div>
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 text-center">
+            <span className="text-[10px] text-blue-200 font-bold uppercase block">Delivered</span>
+            <span className="text-xl font-black">{delivered.length}</span>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-4">
-        {loadedShipments.map((s) => (
-          <div key={s.id} className="bg-white rounded-2xl border border-slate-200 shadow-card p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-900">{s.shipment_code}</span>
-              <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-black uppercase">
-                {s.status}
-              </span>
-            </div>
-
+      {/* Vehicle Capacity Gauge */}
+      {assignedLorry && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+              <Gauge className="w-3.5 h-3.5 text-blue-600" /> Vehicle Capacity Utilization
+            </span>
+            <span className="text-[10px] font-bold text-slate-400">{assignedLorry.lorry_code}</span>
+          </div>
+          <div className="space-y-2">
             <div>
-              <h4 className="text-sm font-bold text-slate-900">{s.description}</h4>
-              <p className="text-xs text-slate-500 mt-0.5">Client: {s.customer_name || 'Commercial Freight'}</p>
+              <div className="flex justify-between text-[10px] font-bold mb-1">
+                <span className="text-slate-600">Weight: {totalWeight.toLocaleString()} / {assignedLorry.max_weight_kg.toLocaleString()} kg</span>
+                <span className="text-blue-600">{Math.round((totalWeight / assignedLorry.max_weight_kg) * 100)}%</span>
+              </div>
+              <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min((totalWeight / assignedLorry.max_weight_kg) * 100, 100)}%` }}
+                />
+              </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl">
-              <div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase">Weight</span>
-                <p className="font-bold text-slate-900">{s.weight_kg.toLocaleString()} kg</p>
+            <div>
+              <div className="flex justify-between text-[10px] font-bold mb-1">
+                <span className="text-slate-600">Volume: {totalVolume.toFixed(1)} / {assignedLorry.max_volume_m3} m³</span>
+                <span className="text-indigo-600">{Math.round((totalVolume / assignedLorry.max_volume_m3) * 100)}%</span>
               </div>
-              <div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase">Volume</span>
-                <p className="font-bold text-slate-900">{s.volume_m3} m³</p>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase">Drop City</span>
-                <p className="font-bold text-slate-900">{s.destination_city}</p>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase">SLA Target</span>
-                <p className="font-bold text-blue-600">{new Date(s.delivery_deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+              <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min((totalVolume / assignedLorry.max_volume_m3) * 100, 100)}%` }}
+                />
               </div>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {/* Active Cargo Section */}
+      {inTransit.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5 text-blue-600" /> Active Cargo ({inTransit.length})
+          </h3>
+          {inTransit.map((s) => (
+            <div key={s.id} className="bg-white rounded-2xl border border-blue-200 shadow-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-black text-slate-900">{s.shipment_code}</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${getStatusColor(s.status)}`}>
+                  {s.status.replace(/_/g, ' ')}
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-slate-700">{s.description}</p>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                <span><strong className="text-slate-800">{s.pickup_city}</strong> → <strong className="text-blue-600">{s.destination_city}</strong></span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Weight</span>
+                  <span className="font-black text-slate-900">{s.weight_kg.toLocaleString()} kg</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Volume</span>
+                  <span className="font-black text-slate-900">{s.volume_m3} m³</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Priority</span>
+                  <span className={`font-black ${s.priority === 'CRITICAL' ? 'text-rose-600' : s.priority === 'HIGH' ? 'text-amber-600' : 'text-slate-700'}`}>
+                    {s.priority || 'MEDIUM'}
+                  </span>
+                </div>
+              </div>
+              {s.delivery_deadline && (
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 pt-1 border-t border-slate-100">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Deadline: <strong className="text-slate-800">
+                    {new Date(s.delivery_deadline).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </strong></span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pending Pickups */}
+      {pending.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-amber-600" /> Pending Pickup ({pending.length})
+          </h3>
+          {pending.map((s) => (
+            <div key={s.id} className="bg-white rounded-2xl border border-amber-200 shadow-card p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-black text-slate-900">{s.shipment_code}</span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-200">
+                  AWAITING PICKUP
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-slate-700">{s.description}</p>
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {s.pickup_city}</span>
+                <span className="font-bold text-slate-700">{s.weight_kg.toLocaleString()} kg</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Delivered */}
+      {delivered.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Delivered ({delivered.length})
+          </h3>
+          {delivered.map((s) => (
+            <div key={s.id} className="bg-emerald-50/50 rounded-2xl border border-emerald-200 p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-black text-slate-900">{s.shipment_code}</span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800">
+                  ✓ DELIVERED
+                </span>
+              </div>
+              <p className="text-xs text-slate-600">{s.description}</p>
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>{s.pickup_city} → {s.destination_city}</span>
+                <span className="font-bold">{s.weight_kg.toLocaleString()} kg</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {myShipments.length === 0 && (
+        <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 space-y-3">
+          <Package className="w-12 h-12 text-slate-300 mx-auto" />
+          <h3 className="text-sm font-bold text-slate-700">No Cargo Assigned</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto">
+            You currently have no consignments assigned. Check with your dispatcher for new assignments.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

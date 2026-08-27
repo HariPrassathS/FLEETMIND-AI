@@ -439,7 +439,7 @@ export async function syncShipmentToSupabase(shipment: Shipment): Promise<void> 
     const payload = {
       id: ensureUUID(shipment.id),
       shipment_code: shipment.shipment_code,
-      customer_id: ensureUUID(shipment.customer_id),
+      customer_id: shipment.customer_id && !shipment.customer_id.startsWith('cust-') ? ensureUUID(shipment.customer_id) : null,
       customer_name: shipment.customer_name || 'Commercial Shipper',
       customer_email: shipment.customer_email || 'customer@fleetmind.ai',
       sender_name: shipment.sender_name || shipment.customer_name || '',

@@ -78,6 +78,15 @@ class FleetMindStore {
       }
 
       this.loadFromLocalStorage();
+      
+      // CROSS-TAB SYNCHRONIZATION: Listen for updates from other tabs (e.g. Customer creating shipment while Dispatcher tab is open)
+      window.addEventListener('storage', (e) => {
+        if (e.key && e.key.startsWith('fleetmind_')) {
+          this.loadFromLocalStorage();
+          this.notify('CROSS_TAB_SYNC');
+        }
+      });
+
       setTimeout(() => {
         initSupabaseStoreSync();
       }, 50);
@@ -1025,6 +1034,7 @@ class FleetMindStore {
       updated_at: shipment.updated_at || new Date().toISOString(),
     };
     this.shipments.unshift(newShipment);
+    this.saveToLocalStorage();
     this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'SHIPMENT_CREATED', 'SHIPMENT', newShipment.id, null, newShipment);
     this.notify('SHIPMENT_CREATED', newShipment);
     if (!skipRemoteSync) {

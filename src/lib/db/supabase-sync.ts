@@ -32,8 +32,8 @@ let isInitialized = false;
  * Initializes bidirectional synchronization between Supabase PostgreSQL and the local state store.
  * Supabase is the AUTHORITATIVE SINGLE SOURCE OF TRUTH.
  */
-export async function initSupabaseStoreSync() {
-  if (isInitialized) return;
+export async function initSupabaseStoreSync(force = false) {
+  if (isInitialized && !force) return;
   const supabase = getSupabaseClient();
   if (!supabase) {
     console.warn('[Supabase Sync] Supabase client not configured. Running in offline/local mode.');

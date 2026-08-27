@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../lib/auth/auth-context';
 import { fleetMindStore } from '../../../lib/db/store';
+import { initSupabaseStoreSync } from '../../../lib/db/supabase-sync';
 import { Shipment } from '../../../lib/optimization/types';
 import {
   Package,
@@ -36,6 +37,7 @@ export default function CustomerDashboardPage() {
     };
 
     loadCustomerData();
+    initSupabaseStoreSync(true);
     const unsub = fleetMindStore.subscribe(() => {
       loadCustomerData();
     });

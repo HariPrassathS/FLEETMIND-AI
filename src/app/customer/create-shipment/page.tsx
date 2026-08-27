@@ -205,9 +205,11 @@ export default function CreateShipmentPage() {
     setIsSubmitting(true);
 
     const newShipment = fleetMindStore.createShipment({
-      customer_id: user?.id || 'cust-abc-electronics',
+      customer_id: user?.id || 'cust-direct',
       customer_name: form.senderCompany || user?.full_name || 'Commercial Shipper',
-      customer_email: form.senderEmail,
+      customer_email: user?.email || form.senderEmail || 'customer@fleetmind.ai',
+      sender_email: user?.email || form.senderEmail || 'customer@fleetmind.ai',
+      sender_name: form.senderName || user?.full_name || 'Shipper Contact',
       description: form.description,
       weight_kg: Number(form.weightKg),
       volume_m3: Number(form.volumeM3),

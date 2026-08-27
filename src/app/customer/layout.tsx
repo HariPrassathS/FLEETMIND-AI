@@ -42,12 +42,20 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
     return unsub;
   }, [user]);
 
-  const navItems = [
+  const desktopNavItems = [
     { href: '/customer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/customer/shipments', label: 'Shipments', icon: Package },
     { href: '/customer/create-shipment', label: 'New Load', icon: PlusCircle, highlight: true },
     { href: '/customer/history', label: 'History', icon: Clock },
     { href: '/customer/notifications', label: 'Alerts', icon: Bell, badge: unreadCount },
+    { href: '/customer/support', label: 'Support', icon: HeadphonesIcon },
+  ];
+
+  const mobileBottomNavItems = [
+    { href: '/customer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/customer/shipments', label: 'Shipments', icon: Package },
+    { href: '/customer/create-shipment', label: 'New Load', icon: PlusCircle, highlight: true },
+    { href: '/customer/history', label: 'History', icon: Clock },
     { href: '/customer/support', label: 'Support', icon: HeadphonesIcon },
   ];
 
@@ -59,7 +67,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
           <div className="flex items-center gap-6">
             <BrandLogo variant="compact" size="md" badge="SHIPPER" />
             <nav className="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl">
-              {navItems.map((item) => {
+              {desktopNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href || (item.href !== '/customer/dashboard' && pathname.startsWith(item.href));
                 return (
@@ -185,9 +193,9 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
           {children}
         </main>
 
-        {/* Mobile Bottom Navigation Bar - 6 Customer Pages */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1 py-1.5 grid grid-cols-6 items-center shadow-lg">
-          {navItems.map((item) => {
+        {/* Mobile Bottom Navigation Bar - Clean 5 Customer Pages (Alerts removed from bottom nav) */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1.5 grid grid-cols-5 items-center shadow-lg">
+          {mobileBottomNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || (item.href !== '/customer/dashboard' && pathname.startsWith(item.href));
             return (
@@ -200,11 +208,6 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
               >
                 <div className="relative flex items-center justify-center">
                   <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${isActive ? 'stroke-[2.5]' : ''} ${item.highlight && !isActive ? 'text-blue-600' : ''}`} />
-                  {Boolean(item.badge && item.badge > 0) && (
-                    <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-rose-500 text-white text-[8px] font-black flex items-center justify-center">
-                      {item.badge}
-                    </span>
-                  )}
                 </div>
                 <span className="text-[9px] sm:text-[10px] mt-0.5 tracking-tight truncate max-w-full">{item.label}</span>
               </Link>

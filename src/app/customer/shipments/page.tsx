@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../../lib/auth/auth-context';
 import { fleetMindStore } from '../../../lib/db/store';
+import { initSupabaseStoreSync } from '../../../lib/db/supabase-sync';
 import { Shipment } from '../../../lib/optimization/types';
 import {
   Package,
@@ -35,6 +36,7 @@ export default function CustomerShipmentsPage() {
     };
 
     loadShipments();
+    initSupabaseStoreSync(true);
     const unsub = fleetMindStore.subscribe(() => {
       loadShipments();
     });

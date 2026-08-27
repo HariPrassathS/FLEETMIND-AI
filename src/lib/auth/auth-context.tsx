@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserProfile } from '../../types/database';
 import { UserRole } from '../optimization/types';
 import { fleetMindStore, SEED_USERS } from '../db/store';
+import { initSupabaseStoreSync } from '../db/supabase-sync';
 import { auth, googleProvider } from './firebase';
 import {
   signInWithEmailAndPassword,
@@ -152,6 +153,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
           setUser({ ...newProfile });
         }
+        // Force fresh Supabase pull on new device / fresh session
+        setTimeout(() => {
+          initSupabaseStoreSync(true);
+        }, 50);
       }
     });
 

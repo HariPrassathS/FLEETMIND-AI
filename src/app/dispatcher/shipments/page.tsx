@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
 import { initSupabaseStoreSync } from '../../../lib/db/supabase-sync';
-import { Shipment, ShipmentCategory, ShipmentPriority, ShipmentStatus, Lorry, Driver } from '../../../lib/optimization/types';
+import { Shipment, ShipmentCategory, ShipmentPriority, ShipmentStatus, Lorry, Driver, ConsolidationOption } from '../../../lib/optimization/types';
+import { SmartConsolidationCard } from '../../../components/dispatcher/smart-consolidation-card';
 import {
   Package,
   Plus,
@@ -169,6 +170,20 @@ export default function ShipmentsPage() {
     setAssignShipment(null);
     setSelectedLorryId('');
     setSelectedDriverId('');
+  };
+
+  const handleConsolidationApply = (shipmentId: string, option: ConsolidationOption) => {
+    const updated = fleetMindStore.applyConsolidationOption(shipmentId, option);
+    if (updated) {
+      const isCons = option.decision_type === 'ADD_TO_EXISTING_TRIP';
+      setSuccessToast(
+        isCons
+          ? `Consignment ${updated.shipment_code} successfully consolidated into carrier ${option.lorry.lorry_code}'s active run!`
+          : `Consignment ${updated.shipment_code} allocated to dedicated carrier ${option.lorry.lorry_code}!`
+      );
+      setTimeout(() => setSuccessToast(null), 3500);
+      setAssignShipment(null);
+    }
   };
 
   const handleAiParse = async () => {
@@ -886,236 +901,49 @@ export default function ShipmentsPage() {
           </div>
         )}
 
-        {/* VEHICLE & DRIVER SELECTION MODAL */}
-        {assignShipment && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col my-auto overflow-hidden animate-in fade-in">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-sm">
-                    <Truck className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-slate-900">
-                      Allocate Carrier & Pilot: {assignShipment.shipment_code}
-                    </h3>
-                    <span className="text-xs text-slate-500 font-medium">
-                      Required: {assignShipment.weight_kg.toLocaleString()} kg / {assignShipment.volume_m3} m³ (
-                      {assignShipment.pickup_city} ➔ {assignShipment.destination_city})
-                    </span>
-                  </div>
-                </div>
-
-                <button onClick={() => setAssignShipment(null)} className="p-2 rounded-xl hover:bg-slate-200 text-slate-400">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleManualAssign} className="flex-1 flex flex-col overflow-hidden">
-                <div className="p-6 overflow-y-auto space-y-4 flex-1">
-                  <div className="text-xs font-bold text-slate-600 flex items-center justify-between">
-                    <span>Ranked by Capacity, Fuel Efficiency, Driver Availability, and Proximity:</span>
-                    <span className="text-[11px] text-blue-600 font-bold">Click any vehicle to select</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {fleetMindStore.getCandidateLorriesForShipment(assignShipment.id).map((cand) => {
-                      const isSelected = selectedLorryId === cand.lorry.id;
-                      return (
-                        <div
-                          key={cand.lorry.id}
-                          onClick={() => {
-                            setSelectedLorryId(cand.lorry.id);
-                            if (cand.driver) setSelectedDriverId(cand.driver.id);
-                          }}
-                          className={`p-4 rounded-3xl border-2 transition cursor-pointer relative space-y-3.5 ${
-                            isSelected
-                              ? 'border-blue-600 bg-blue-50/50 shadow-card ring-2 ring-blue-600/30'
-                              : cand.is_feasible
-                              ? 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'
-                              : 'border-slate-200 bg-slate-50/80 opacity-75'
-                          }`}
-                        >
-                          {/* Top: Lorry Avatar & Info */}
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-start gap-3 min-w-0">
-                              <VehicleAvatar
-                                src={cand.lorry.image_url}
-                                lorryCode={cand.lorry.lorry_code}
-                                model={cand.lorry.model}
-                                isRefrigerated={cand.lorry.is_refrigerated}
-                                size="md"
-                              />
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-black text-slate-900">{cand.lorry.lorry_code}</span>
-                                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-100 text-blue-800">
-                                    Score: {cand.decision_score}/100
-                                  </span>
-                                </div>
-                                <span className="text-xs font-bold text-slate-700 block truncate">{cand.lorry.model}</span>
-                                <span className="text-[10px] text-slate-400 font-mono block">{cand.lorry.registration_number}</span>
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setViewTruckDetails(cand.lorry);
-                              }}
-                              className="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 text-[10px] font-black rounded-xl border border-slate-200 flex items-center gap-1 shadow-xs transition shrink-0"
-                              title="Inspect Full Vehicle Technical Specifications & Telematics"
-                            >
-                              <Eye className="w-3 h-3 text-blue-600" />
-                              <span>View Truck</span>
-                            </button>
-                          </div>
-
-                          {/* Live Visual Capacity Progress Bars */}
-                          <div className="space-y-2.5 text-[11px] bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
-                            {/* Payload Weight Bar */}
-                            <div>
-                              <div className="flex justify-between items-center font-bold text-slate-800 text-[11px] mb-1">
-                                <span className="flex items-center gap-1 text-slate-600">
-                                  <Scale className="w-3.5 h-3.5 text-blue-600" />
-                                  <span>Payload Load</span>
-                                </span>
-                                <span className="font-mono text-xs">
-                                  <strong className={cand.weight_utilization_pct > 95 ? 'text-rose-600' : 'text-slate-900'}>
-                                    {cand.weight_utilization_pct}%
-                                  </strong>{' '}
-                                  <span className="text-slate-500 font-normal">
-                                    ({cand.remaining_weight.toLocaleString()} kg free of {cand.lorry.max_weight_kg.toLocaleString()} kg)
-                                  </span>
-                                </span>
-                              </div>
-                              <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden p-0.5">
-                                <div
-                                  className={`h-full rounded-full transition-all duration-500 ${
-                                    cand.weight_utilization_pct > 95
-                                      ? 'bg-rose-500'
-                                      : cand.weight_utilization_pct > 80
-                                      ? 'bg-amber-500'
-                                      : 'bg-gradient-to-r from-blue-600 to-indigo-600'
-                                  }`}
-                                  style={{ width: `${Math.min(100, Math.max(4, cand.weight_utilization_pct))}%` }}
-                                />
-                              </div>
-                            </div>
-
-                            {/* Volume Space Bar */}
-                            <div>
-                              <div className="flex justify-between items-center font-bold text-slate-800 text-[11px] mb-1">
-                                <span className="flex items-center gap-1 text-slate-600">
-                                  <Layers className="w-3.5 h-3.5 text-purple-600" />
-                                  <span>Container Volume</span>
-                                </span>
-                                <span className="font-mono text-xs">
-                                  <strong className="text-purple-900">{cand.volume_utilization_pct}%</strong>{' '}
-                                  <span className="text-slate-500 font-normal">
-                                    ({cand.remaining_volume} m³ free of {cand.lorry.max_volume_m3} m³)
-                                  </span>
-                                </span>
-                              </div>
-                              <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden p-0.5">
-                                <div
-                                  className="h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-500"
-                                  style={{ width: `${Math.min(100, Math.max(4, cand.volume_utilization_pct))}%` }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Stats Grid */}
-                          <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-600">
-                            <div className="bg-white p-2 rounded-xl border border-slate-100">
-                              <span className="text-slate-400 font-bold block">Efficiency</span>
-                              <strong className="text-blue-600 font-black">{cand.lorry.fuel_efficiency_km_per_l} km/L</strong>
-                            </div>
-                            <div className="bg-white p-2 rounded-xl border border-slate-100">
-                              <span className="text-slate-400 font-bold block">Pilot</span>
-                              <strong className="text-slate-900 font-bold truncate block">{cand.driver?.name || 'Unassigned'}</strong>
-                            </div>
-                            <div className="bg-white p-2 rounded-xl border border-slate-100">
-                              <span className="text-slate-400 font-bold block">Pickup Dist</span>
-                              <strong className="text-slate-900 font-bold">{cand.distance_to_pickup_km} km</strong>
-                            </div>
-                          </div>
-
-                          {/* Feasibility tags */}
-                          <div className="flex items-center justify-between pt-1">
-                            {cand.is_feasible ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                100% FEASIBLE
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
-                                <AlertTriangle className="w-3.5 h-3.5" />
-                                INSUFFICIENT CAPACITY
-                              </span>
-                            )}
-
-                            <span className="text-[10px] font-bold text-slate-400">
-                              Est. ₹{Math.round(cand.distance_to_pickup_km * 18 + 800).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
-                  <div className="flex flex-wrap items-center gap-3 text-xs">
-                    {selectedLorryId ? (
-                      <span className="font-bold text-slate-900">
-                        Selected Carrier: <strong className="text-blue-600 font-black">{selectedLorryId}</strong>
+        {/* SMART SHIPMENT CONSOLIDATION & CARRIER ALLOCATION MODAL */}
+        {assignShipment && (() => {
+          const consolidationAnalysis = fleetMindStore.analyzeShipmentConsolidation(assignShipment.id);
+          return (
+            <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col my-auto overflow-hidden animate-in fade-in">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-sm">
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-slate-900">
+                        Smart Allocation & Trip Consolidation: {assignShipment.shipment_code}
+                      </h3>
+                      <span className="text-xs text-slate-500 font-medium">
+                        Cargo: {assignShipment.weight_kg.toLocaleString()} kg • {assignShipment.volume_m3} m³ ({assignShipment.pickup_city} ➔ {assignShipment.destination_city})
                       </span>
-                    ) : (
-                      <span className="text-slate-400">Please click a candidate vehicle above to assign</span>
-                    )}
-
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-slate-500 font-bold">Pilot:</span>
-                      <select
-                        value={selectedDriverId}
-                        onChange={(e) => setSelectedDriverId(e.target.value)}
-                        className="px-2.5 py-1 text-xs font-bold rounded-lg border border-slate-300 bg-white text-slate-800 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                      >
-                        <option value="">Default Vehicle Pilot</option>
-                        {drivers.map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name} ({d.availability_status})
-                          </option>
-                        ))}
-                      </select>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setAssignShipment(null)}
-                      className="px-4 py-2 text-slate-600 font-bold rounded-xl hover:bg-slate-200"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={!selectedLorryId}
-                      className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 text-white font-black rounded-xl shadow-md transition flex items-center gap-1.5"
-                    >
-                      <Check className="w-4 h-4" />
-                      Confirm Assignment & Dispatch
-                    </button>
-                  </div>
+                  <button onClick={() => setAssignShipment(null)} className="p-2 rounded-xl hover:bg-slate-200 text-slate-400">
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
-              </form>
+
+                <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+                  {consolidationAnalysis ? (
+                    <SmartConsolidationCard
+                      analysis={consolidationAnalysis}
+                      onApplyOption={(option) => handleConsolidationApply(assignShipment.id, option)}
+                      onCancel={() => setAssignShipment(null)}
+                    />
+                  ) : (
+                    <div className="text-center py-10 text-slate-400">
+                      Analyzing fleet capacity...
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* AI AUTO EXTRACT MODAL */}
         {isAiModalOpen && (

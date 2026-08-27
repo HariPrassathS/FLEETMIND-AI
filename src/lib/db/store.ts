@@ -19,7 +19,10 @@ import {
   CargoTransferRecord,
   NotificationItem,
   NotificationSeverity,
+  ConsolidationAnalysisResult,
+  ConsolidationOption,
 } from '../optimization/types';
+import { SmartConsolidationEngine } from '../optimization/consolidation';
 import { AuditLog, DeliveryEvent, HealthCheckStatus, SystemAlert, UserProfile } from '../../types/database';
 import { SEED_DRIVERS, SEED_LORRIES, SEED_SHIPMENTS, SEED_SYSTEM_SETTINGS } from './seed-data';
 import {
@@ -1323,6 +1326,138 @@ class FleetMindStore {
     return s;
   }
 
+  /**
+   * Smart Shipment Consolidation & Trip Insertion Analyzer.
+   * Evaluates active & planned trips for route insertion vs standalone vehicle dispatch.
+   */
+  public analyzeShipmentConsolidation(shipmentId: string): ConsolidationAnalysisResult | null {
+    const shipment = this.shipments.find((s) => s.id === shipmentId || s.shipment_code === shipmentId);
+    if (!shipment) return null;
+
+    return SmartConsolidationEngine.analyzeShipment(
+      shipment,
+      this.trips,
+      this.routes,
+      this.lorries,
+      this.drivers,
+      this.shipments,
+      this.systemSettings
+    );
+  }
+
+  /**
+   * Commits an optimization decision (either Consolidate into Existing Trip or Dispatch New Standby Vehicle).
+   */
+  public applyConsolidationOption(shipmentId: string, option: ConsolidationOption): Shipment | null {
+    const shipment = this.shipments.find((s) => s.id === shipmentId || s.shipment_code === shipmentId);
+    if (!shipment) return null;
+
+    const lorry = this.lorries.find((l) => l.id === option.lorry.id || l.lorry_code === option.lorry.lorry_code) || option.lorry;
+    const driver = option.driver || (lorry.driver_id ? this.getDriverById(lorry.driver_id) : undefined) || this.drivers[0];
+
+    // If it's a new standalone vehicle dispatch:
+    if (!option.is_existing_trip || option.decision_type === 'ASSIGN_NEW_VEHICLE') {
+      return this.assignLorryAndDriver(shipment.id, lorry.id, driver?.id);
+    }
+
+    // --- CONSOLIDATE INTO EXISTING TRIP ---
+    shipment.status = 'ASSIGNED';
+    shipment.assigned_lorry_id = lorry.id;
+    shipment.assigned_lorry_code = lorry.lorry_code;
+    shipment.assigned_driver_id = driver?.id || null;
+    shipment.assigned_driver_name = driver?.name || 'Assigned Driver';
+    shipment.trip_id = option.trip_id;
+    shipment.assigned_route_id = option.route_id;
+    shipment.updated_at = new Date().toISOString();
+
+    // 1. Update Existing Trip
+    const existingTrip = this.trips.find((t) => t.id === option.trip_id || t.lorry_id === lorry.id);
+    if (existingTrip) {
+      if (!existingTrip.shipment_ids.includes(shipment.id)) {
+        existingTrip.shipment_ids.push(shipment.id);
+      }
+      existingTrip.stops_count = option.proposed_stops_sequence.length || (existingTrip.stops_count + 2);
+      existingTrip.distance_km = option.projected_route_distance_km;
+      existingTrip.fuel_liters = Number((existingTrip.fuel_liters + option.additional_fuel_liters).toFixed(1));
+      existingTrip.estimated_cost_inr = Math.round(existingTrip.estimated_cost_inr + option.incremental_cost_inr);
+      existingTrip.eta = option.projected_eta || existingTrip.eta;
+      existingTrip.updated_at = new Date().toISOString();
+    }
+
+    // 2. Update Existing Route Stops
+    let existingRoute = this.routes.find((r) => r.id === option.route_id || r.lorry_id === lorry.id);
+    if (existingRoute) {
+      if (!existingRoute.shipment_ids.includes(shipment.id)) {
+        existingRoute.shipment_ids.push(shipment.id);
+      }
+      if (option.proposed_stops_sequence && option.proposed_stops_sequence.length > 0) {
+        existingRoute.stops = option.proposed_stops_sequence;
+      }
+      existingRoute.total_distance_km = option.projected_route_distance_km;
+      existingRoute.total_weight_kg = option.projected_weight_kg;
+      existingRoute.total_volume_m3 = option.projected_volume_m3;
+      existingRoute.weight_utilization_pct = option.projected_weight_util_pct;
+      existingRoute.volume_utilization_pct = option.projected_volume_util_pct;
+      existingRoute.fuel_consumption_liters = Number((existingRoute.total_distance_km / (lorry.fuel_efficiency_km_per_l || 7)).toFixed(1));
+      existingRoute.estimated_cost = Math.round(existingRoute.fuel_consumption_liters * 94.5 + existingRoute.stops.length * 500);
+      existingRoute.updated_at = new Date().toISOString();
+      shipment.assigned_route_id = existingRoute.id;
+    }
+
+    // 3. Update Lorry Status
+    lorry.status = 'ON_ROUTE';
+    lorry.driver_id = driver?.id || lorry.driver_id;
+    lorry.assigned_driver_name = driver?.name || lorry.assigned_driver_name;
+    lorry.updated_at = new Date().toISOString();
+
+    if (driver) {
+      driver.assigned_lorry_id = lorry.id;
+      driver.availability_status = 'ON_DUTY';
+      driver.updated_at = new Date().toISOString();
+      syncDriverToSupabase(driver);
+    }
+
+    // 4. Notifications
+    this.createNotification({
+      user_id: shipment.customer_email || 'customer@fleetmind.ai',
+      shipment_id: shipment.id,
+      type: 'SHIPMENT_ASSIGNED',
+      severity: 'LOW',
+      title: `Consignment ${shipment.shipment_code} Consolidated onto Carrier ${lorry.lorry_code}`,
+      message: `Allocated to active corridor ${option.existing_corridor} with pilot ${driver?.name || 'Carrier Driver'}.`,
+      action_url: `/customer/shipments/${shipment.id}`,
+    });
+
+    if (driver) {
+      this.createNotification({
+        user_id: driver.id,
+        shipment_id: shipment.id,
+        type: 'ROUTE_UPDATED',
+        severity: shipment.priority === 'CRITICAL' ? 'CRITICAL' : 'MEDIUM',
+        title: `📦 New Consolidated Pickup Added: ${shipment.pickup_city}`,
+        message: `Corridor updated with stop at ${shipment.pickup_address} (${shipment.weight_kg.toLocaleString()} kg). Deadline: ${new Date(shipment.delivery_deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        action_url: `/driver/route`,
+      });
+    }
+
+    this.saveToLocalStorage();
+    this.logAudit('dispatcher@fleetmind.ai', 'DISPATCHER', 'CONSOLIDATION_OPTIMIZATION_DECISION', 'SHIPMENT', shipment.id, null, {
+      decision_type: option.decision_type,
+      lorry_code: lorry.lorry_code,
+      driver_name: driver?.name,
+      additional_distance_km: option.additional_distance_km,
+      additional_fuel_liters: option.additional_fuel_liters,
+      net_savings_inr: option.net_savings_inr,
+      projected_weight_util_pct: option.projected_weight_util_pct,
+    });
+
+    this.notify('SHIPMENT_ASSIGNED', shipment);
+    this.notify('ROUTE_UPDATED', existingRoute);
+    syncShipmentToSupabase(shipment);
+    syncVehicleToSupabase(lorry);
+    return shipment;
+  }
+
   public getCandidateLorriesForShipment(shipmentId: string) {
     const shipment = this.shipments.find((s) => s.id === shipmentId || s.shipment_code === shipmentId);
     if (!shipment) return [];
@@ -1641,12 +1776,29 @@ class FleetMindStore {
     const shipment = this.shipments.find((s) => s.id === shipmentId || s.shipment_code === shipmentId);
     if (!shipment) return null;
 
+    // 1. Run Smart Consolidation Analysis First
+    const analysis = this.analyzeShipmentConsolidation(shipmentId);
+    if (analysis && analysis.recommended_option && analysis.recommended_option.is_feasible) {
+      const assigned = this.applyConsolidationOption(shipmentId, analysis.recommended_option);
+      if (assigned) {
+        const isCons = analysis.recommended_option.decision_type === 'ADD_TO_EXISTING_TRIP';
+        this.createNotification({
+          user_id: 'dispatcher@fleetmind.ai',
+          title: isCons ? `⚡ AUTO-CONSOLIDATED CONSIGNMENT: ${shipment.shipment_code}` : `⚡ AUTO-ALLOCATED CARRIER: ${shipment.shipment_code}`,
+          message: isCons
+            ? `Consolidated into ${analysis.recommended_option.lorry.lorry_code}'s active ${analysis.recommended_option.existing_corridor} run (+${analysis.recommended_option.additional_distance_km} km detour, saving ₹${analysis.recommended_option.net_savings_inr.toLocaleString()}).`
+            : `Allocated to dedicated carrier ${analysis.recommended_option.lorry.lorry_code}.`,
+          severity: shipment.priority === 'CRITICAL' ? 'CRITICAL' : 'LOW',
+          type: 'SYSTEM_ALERT',
+          entity_type: 'SHIPMENT',
+          entity_id: shipment.id,
+        });
+        return assigned;
+      }
+    }
+
+    // 2. Fallback to candidate evaluation
     const candidates = this.getCandidateLorriesForShipment(shipmentId);
-    
-    // Sort strictly for SPEED and FAST ARRIVAL:
-    // 1. Feasible payload capacity first
-    // 2. Minimum distance to pickup (closest vehicle gets there fastest)
-    // 3. Higher efficiency & performance score
     const sortedForSpeed = [...candidates].sort((a, b) => {
       if (a.is_feasible && !b.is_feasible) return -1;
       if (!a.is_feasible && b.is_feasible) return 1;
@@ -1656,49 +1808,9 @@ class FleetMindStore {
       return b.decision_score - a.decision_score;
     });
 
-    const bestCandidate =
-      sortedForSpeed[0] ||
-      (this.lorries.length > 0
-        ? {
-            lorry: this.lorries[0],
-            driver: this.drivers[0],
-            distance_to_pickup_km: 15,
-            decision_score: 98,
-            is_feasible: true,
-          }
-        : null);
-
+    const bestCandidate = sortedForSpeed[0] || (this.lorries.length > 0 ? { lorry: this.lorries[0], driver: this.drivers[0] } : null);
     if (bestCandidate) {
-      const assigned = this.assignLorryAndDriver(shipmentId, bestCandidate.lorry.id, bestCandidate.driver?.id);
-      
-      this.createNotification({
-        user_id: shipment.customer_email || 'customer@fleetmind.ai',
-        title: `🚨 CRITICAL EMERGENCY LOAD AUTO-DISPATCHED: ${shipment.shipment_code}`,
-        message: `High-priority Critical consignment automatically matched to fastest carrier ${bestCandidate.lorry.lorry_code} (${bestCandidate.driver?.name || 'Rapid Response Pilot'}). Vehicle en-route for immediate pickup.`,
-        severity: 'CRITICAL',
-        type: 'SHIPMENT_ASSIGNED',
-        entity_type: 'SHIPMENT',
-        entity_id: shipment.id,
-      });
-
-      this.createNotification({
-        user_id: 'dispatcher@fleetmind.ai',
-        title: `⚡ AUTO-ALLOCATED CRITICAL LOAD: ${shipment.shipment_code}`,
-        message: `System auto-assigned closest carrier ${bestCandidate.lorry.lorry_code} to ${shipment.pickup_city} ➔ ${shipment.destination_city} for fastest SLA arrival.`,
-        severity: 'CRITICAL',
-        type: 'SYSTEM_ALERT',
-        entity_type: 'SHIPMENT',
-        entity_id: shipment.id,
-      });
-
-      this.logAudit('system-optimizer@fleetmind.ai', 'ADMIN', 'CRITICAL_AUTO_DISPATCH_EXECUTED', 'SHIPMENT', shipmentId, null, {
-        lorry_code: bestCandidate.lorry.lorry_code,
-        score: bestCandidate.decision_score,
-        priority: shipment.priority,
-        speed_proximity_km: bestCandidate.distance_to_pickup_km,
-      });
-
-      return assigned;
+      return this.assignLorryAndDriver(shipmentId, bestCandidate.lorry.id, bestCandidate.driver?.id);
     }
     return null;
   }

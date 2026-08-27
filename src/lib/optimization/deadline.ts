@@ -97,7 +97,7 @@ export function validateRouteDeadlines(
   for (const stop of stops) {
     if (stop.stop_type === 'DELIVERY') {
       const shipment = shipmentMap.get(stop.shipment_id);
-      const deadline = shipment?.delivery_deadline || stop.deadline;
+      const deadline = shipment?.delivery_deadline || stop.deadline || new Date(Date.now() + 24 * 3600000).toISOString();
       const status = classifyDeadlineStatus(stop.arrival_eta, deadline);
       stopStatuses.set(stop.id, status);
 

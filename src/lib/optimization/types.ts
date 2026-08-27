@@ -177,6 +177,7 @@ export interface Shipment {
 
   // Lifecycle Status & Assignments
   status: ShipmentStatus;
+  trip_id?: string;
   assigned_lorry_id?: string | null;
   assigned_lorry_code?: string | null;
   assigned_driver_id?: string | null;
@@ -209,7 +210,7 @@ export interface RouteStop {
   address: string;
   phone?: string;
   arrival_eta: string; // ISO string
-  deadline: string; // ISO string
+  deadline?: string; // ISO string
   status: StopStatus;
   actual_arrival?: string;
   actual_departure?: string;
@@ -619,5 +620,82 @@ export interface NotificationItem {
   entity_id?: string;
   is_read: boolean;
   timestamp: string;
+}
+
+// --- Smart Shipment Consolidation & Trip Insertion Types ---
+
+export type ConsolidationDecisionType = 'ADD_TO_EXISTING_TRIP' | 'ASSIGN_NEW_VEHICLE' | 'INFEASIBLE';
+
+export type CorridorCompatibilityLevel = 'EXCELLENT' | 'GOOD' | 'MODERATE' | 'POOR' | 'INCOMPATIBLE';
+
+export interface ConsolidationOption {
+  option_id: string;
+  decision_type: ConsolidationDecisionType;
+  lorry: Lorry;
+  driver?: Driver;
+  trip_id?: string;
+  route_id?: string;
+  is_existing_trip: boolean;
+  existing_corridor: string;
+  new_pickup_city: string;
+  new_destination_city: string;
+
+  // Capacity & Load Progression
+  current_weight_kg: number;
+  new_shipment_weight_kg: number;
+  projected_weight_kg: number;
+  max_weight_kg: number;
+  current_weight_util_pct: number;
+  projected_weight_util_pct: number;
+  remaining_weight_kg: number;
+
+  current_volume_m3: number;
+  new_shipment_volume_m3: number;
+  projected_volume_m3: number;
+  max_volume_m3: number;
+  current_volume_util_pct: number;
+  projected_volume_util_pct: number;
+  remaining_volume_m3: number;
+
+  // Route & Detour Metrics
+  current_route_distance_km: number;
+  projected_route_distance_km: number;
+  additional_distance_km: number;
+  additional_time_minutes: number;
+  pickup_deviation_km: number;
+  corridor_compatibility: CorridorCompatibilityLevel;
+
+  // Cost & Fuel Calculations
+  fuel_efficiency_km_per_l: number;
+  additional_fuel_liters: number;
+  additional_fuel_cost_inr: number;
+  additional_toll_inr: number;
+  additional_driver_cost_inr: number;
+  incremental_cost_inr: number;
+  standalone_new_vehicle_cost_inr: number;
+  net_savings_inr: number;
+
+  // SLA & Feasibility
+  is_feasible: boolean;
+  is_deadline_feasible: boolean;
+  deadline_buffer_minutes: number;
+  projected_eta: string;
+  delivery_deadline: string;
+
+  // Deterministic Scoring & Reasons
+  deterministic_score: number;
+  reasons: string[];
+  warning_reasons: string[];
+  proposed_stops_sequence: RouteStop[];
+}
+
+export interface ConsolidationAnalysisResult {
+  shipment: Shipment;
+  recommended_option: ConsolidationOption;
+  candidate_trips: ConsolidationOption[];
+  candidate_new_vehicles: ConsolidationOption[];
+  all_options: ConsolidationOption[];
+  analyzed_at: string;
+  ai_summary?: string;
 }
 

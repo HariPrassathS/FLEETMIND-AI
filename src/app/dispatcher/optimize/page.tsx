@@ -430,7 +430,7 @@ export default function OptimizePage() {
                                     </span>
                                   </div>
                                   <p className="text-[11px] text-slate-700 font-semibold truncate">{st.address}</p>
-                                  <p className="text-[10px] text-slate-400">Target SLA: {new Date(st.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                  <p className="text-[10px] text-slate-400">Target SLA: {st.deadline ? new Date(st.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Standard Buffer'}</p>
                                 </div>
                               ))}
                             </div>

@@ -337,3 +337,58 @@ Provide a crisp, direct, enterprise-grade response based ONLY on the verified da
 
 // Backwards compatibility alias
 export const answerCopilotQuestion = answerFleetMindAIQuestion;
+
+/**
+ * AI Feature 4: Smart Shipment Consolidation Narrative Explainer
+ * Generates an enterprise-grade explanation of the deterministic consolidation decision.
+ */
+export async function generateConsolidationExplanation(params: {
+  shipmentCode: string;
+  pickupCity: string;
+  destinationCity: string;
+  weightKg: number;
+  volumeM3: number;
+  decisionType: 'ADD_TO_EXISTING_TRIP' | 'ASSIGN_NEW_VEHICLE';
+  lorryCode: string;
+  driverName?: string;
+  existingCorridor: string;
+  additionalDistanceKm: number;
+  additionalTimeMinutes: number;
+  additionalFuelLiters: number;
+  netSavingsInr: number;
+  projectedWeightUtilPct: number;
+  reasons: string[];
+}): Promise<string> {
+  const isConsolidation = params.decisionType === 'ADD_TO_EXISTING_TRIP';
+
+  const systemPrompt = `You are FleetMind AI, an enterprise freight logistics dispatcher assistant.
+Explain the optimization recommendation for the consignment based strictly on the verified mathematical metrics provided.
+DO NOT hallucinate or alter any numbers. Keep the tone executive, crisp, and analytical (2-3 sentences max).`;
+
+  const userPrompt = `Consignment: ${params.shipmentCode} (${params.weightKg.toLocaleString()} kg, ${params.volumeM3} m³, ${params.pickupCity} ➔ ${params.destinationCity})
+Decision: ${isConsolidation ? 'ADD TO EXISTING ACTIVE TRIP' : 'ASSIGN NEW DEDICATED VEHICLE'}
+Assigned Carrier: ${params.lorryCode} (Pilot: ${params.driverName || 'Active Driver'})
+Existing Corridor: ${params.existingCorridor}
+Additional Detour: +${params.additionalDistanceKm} km (+${params.additionalTimeMinutes} mins)
+Additional Fuel: +${params.additionalFuelLiters} L
+Projected Load Factor: ${params.projectedWeightUtilPct}% payload
+Net Cost Savings: ₹${params.netSavingsInr.toLocaleString()}
+Verified Reasons:
+${params.reasons.map((r) => `- ${r}`).join('\n')}
+
+Generate a concise 2-sentence explanation of why this is the optimal operational and economic choice.`;
+
+  try {
+    const explanation = await callGroqChat([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ]);
+    return explanation.trim();
+  } catch {
+    if (isConsolidation) {
+      return `FleetMind recommends consolidating consignment ${params.shipmentCode} into carrier ${params.lorryCode}'s active ${params.existingCorridor} corridor. This requires only a +${params.additionalDistanceKm} km route deviation and +${params.additionalFuelLiters} L of diesel while increasing vehicle load factor to ${params.projectedWeightUtilPct}%, saving ₹${params.netSavingsInr.toLocaleString()} by eliminating a second vehicle dispatch.`;
+    } else {
+      return `FleetMind recommends allocating dedicated carrier ${params.lorryCode} for consignment ${params.shipmentCode} (${params.pickupCity} ➔ ${params.destinationCity}) to guarantee strict deadline compliance and avoid overloading active corridor routes.`;
+    }
+  }
+}

@@ -33,7 +33,21 @@ import {
   deleteDriverFromSupabase,
   deleteProfileFromSupabase,
   initSupabaseStoreSync,
+  ensureUUID,
 } from './supabase-sync';
+
+/**
+ * Generates an enterprise-grade globally unique shipment tracking code.
+ * Format: FM-YYMMDD-XXXX (e.g. FM-260828-7492)
+ */
+export function generateUniqueShipmentCode(): string {
+  const now = new Date();
+  const yy = now.getFullYear().toString().slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  return `FM-${yy}${mm}${dd}-${rand}`;
+}
 
 // Clean Production Seed Constants
 export const SEED_USERS: UserProfile[] = [];
@@ -996,10 +1010,18 @@ class FleetMindStore {
   }
 
   public createShipment(shipment: Partial<Shipment> & { description: string; weight_kg: number }, skipRemoteSync = false): Shipment {
-    const count = this.shipments.length + 1;
+    const rawCode = shipment.shipment_code && shipment.shipment_code.trim() ? shipment.shipment_code.trim() : generateUniqueShipmentCode();
+    // Ensure absolute uniqueness in memory store
+    let finalCode = rawCode;
+    while (this.shipments.some((s) => s.shipment_code === finalCode)) {
+      finalCode = generateUniqueShipmentCode();
+    }
+
     const newShipment: Shipment = {
-      id: shipment.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `shipment-${Date.now()}`),
-      shipment_code: shipment.shipment_code || `S-${1000 + count}`,
+      id: shipment.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(shipment.id)
+        ? shipment.id
+        : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : ensureUUID(shipment.id)),
+      shipment_code: finalCode,
       customer_id: shipment.customer_id || 'cust-direct',
       customer_name: shipment.customer_name || '',
       customer_email: shipment.customer_email || 'customer@fleetmind.ai',

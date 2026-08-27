@@ -19,6 +19,9 @@ import {
   Activity,
   Box,
   Calendar,
+  Building2,
+  Phone,
+  User,
 } from 'lucide-react';
 
 export default function DriverShipmentsPage() {
@@ -178,8 +181,40 @@ export default function DriverShipmentsPage() {
                   </span>
                 </div>
               </div>
+
+              {/* Customer & Consignee Information for Driver */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                <div className="bg-slate-50 p-2.5 rounded-xl space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">Shipper / Customer</span>
+                    <span className="text-[9px] bg-slate-200 text-slate-700 px-1 py-0.5 rounded font-bold">PICKUP</span>
+                  </div>
+                  <strong className="text-slate-900 text-xs block truncate">{s.sender_company || s.customer_name || 'Commercial Shipper'}</strong>
+                  <p className="text-slate-500 text-[11px] truncate">{s.sender_name || 'Dispatcher'}</p>
+                  {s.sender_phone && (
+                    <a href={`tel:${s.sender_phone}`} className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-800">
+                      <Phone className="w-3 h-3" /> Call: {s.sender_phone}
+                    </a>
+                  )}
+                </div>
+
+                <div className="bg-blue-50/60 p-2.5 rounded-xl space-y-1 border border-blue-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-blue-600 font-bold uppercase">Consignee / Receiver</span>
+                    <span className="text-[9px] bg-blue-600 text-white px-1 py-0.5 rounded font-bold">DELIVERY</span>
+                  </div>
+                  <strong className="text-slate-900 text-xs block truncate">{s.receiver_company || 'Authorized Receiving Dock'}</strong>
+                  <p className="text-slate-600 text-[11px] truncate">{s.receiver_name}</p>
+                  {s.receiver_phone && (
+                    <a href={`tel:${s.receiver_phone}`} className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900">
+                      <Phone className="w-3 h-3" /> Call: {s.receiver_phone}
+                    </a>
+                  )}
+                </div>
+              </div>
+
               {s.delivery_deadline && (
-                <div className="flex items-center gap-1.5 text-xs text-slate-500 pt-1 border-t border-slate-100">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 pt-1">
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
                   <span>Deadline: <strong className="text-slate-800">
                     {new Date(s.delivery_deadline).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}

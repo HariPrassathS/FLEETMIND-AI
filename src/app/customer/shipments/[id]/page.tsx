@@ -259,11 +259,19 @@ export default function CustomerTrackingPage() {
           <div className="text-[11px] text-slate-600 font-medium flex items-center justify-around pt-1 border-t border-blue-200/60">
             <div>
               <span className="text-[10px] text-slate-400 font-bold block">Assigned Carrier</span>
-              <strong className="text-slate-900">{shipment.assigned_lorry_code || lorry?.lorry_code || 'L-11'}</strong>
+              <strong className="text-slate-900">
+                {shipment.status === 'PENDING_REVIEW' || shipment.status === 'PENDING'
+                  ? 'Pending Assignment'
+                  : (shipment.assigned_lorry_code || lorry?.lorry_code || 'Assigned Carrier')}
+              </strong>
             </div>
             <div>
               <span className="text-[10px] text-slate-400 font-bold block">Pilot Driver</span>
-              <strong className="text-slate-900">{shipment.assigned_driver_name || driver?.name || 'Murugan Selvam'}</strong>
+              <strong className="text-slate-900">
+                {shipment.status === 'PENDING_REVIEW' || shipment.status === 'PENDING'
+                  ? 'Awaiting Dispatch Review'
+                  : (shipment.assigned_driver_name || driver?.name || 'Assigned Driver')}
+              </strong>
             </div>
           </div>
         </div>
@@ -433,38 +441,54 @@ export default function CustomerTrackingPage() {
             4. Commercial Carrier & Pilot Driver
           </h3>
 
-          <div className="grid grid-cols-2 gap-3 text-xs pt-1">
-            {/* Lorry Info */}
-            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-1">
-              <span className="text-[10px] text-slate-400 font-bold uppercase block">Carrier Vehicle</span>
-              <strong className="text-slate-900 text-sm font-black block">
-                {lorry?.lorry_code || shipment.assigned_lorry_code || 'L-11'}
-              </strong>
-              <p className="text-[11px] text-slate-600">{lorry?.model || 'Tata 1109 LPT (6 Ton)'}</p>
-              <span className="text-[10px] text-slate-400 font-mono block">{lorry?.registration_number || 'TN-01-AB-4501'}</span>
+          {shipment.status === 'PENDING_REVIEW' || shipment.status === 'PENDING' ? (
+            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1.5 text-center">
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                <Clock className="w-4 h-4 text-amber-600" />
+                <span>Awaiting Dispatcher Acceptance</span>
+              </div>
+              <p className="text-[11px] text-amber-700 font-medium">
+                Your consignment is currently in queue. Once the dispatcher reviews and accepts the load, the assigned commercial vehicle, pilot driver credentials, and real-time contact details will appear here.
+              </p>
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                {/* Lorry Info */}
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-1">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Carrier Vehicle</span>
+                  <strong className="text-slate-900 text-sm font-black block">
+                    {shipment.assigned_lorry_code || lorry?.lorry_code || 'Carrier Allocated'}
+                  </strong>
+                  <p className="text-[11px] text-slate-600">{lorry?.model || 'Commercial Freight Carrier'}</p>
+                  <span className="text-[10px] text-slate-400 font-mono block">{lorry?.registration_number || 'TN-RTO-VERIFIED'}</span>
+                </div>
 
-            {/* Pilot Driver Info */}
-            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-1">
-              <span className="text-[10px] text-slate-400 font-bold uppercase block">Pilot Driver</span>
-              <strong className="text-slate-900 text-sm font-black block">
-                {driver?.name || shipment.assigned_driver_name || 'Murugan Selvam'}
-              </strong>
-              <p className="text-[11px] text-emerald-700 font-bold">Commercial Verified Driver</p>
-              <a
-                href={`tel:${driver?.phone || '+919840122334'}`}
-                className="mt-1.5 inline-flex items-center gap-1 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition shadow-xs"
-              >
-                <Phone className="w-3 h-3" />
-                <span>Call Driver ({driver?.phone || '+91 98401 22334'})</span>
-              </a>
-            </div>
-          </div>
+                {/* Pilot Driver Info */}
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-1">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Pilot Driver</span>
+                  <strong className="text-slate-900 text-sm font-black block">
+                    {shipment.assigned_driver_name || driver?.name || 'Pilot Allocated'}
+                  </strong>
+                  <p className="text-[11px] text-emerald-700 font-bold">Commercial Verified Pilot</p>
+                  {driver?.phone && (
+                    <a
+                      href={`tel:${driver.phone}`}
+                      className="mt-1.5 inline-flex items-center gap-1 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition shadow-xs"
+                    >
+                      <Phone className="w-3 h-3" />
+                      <span>Call Driver ({driver.phone})</span>
+                    </a>
+                  )}
+                </div>
+              </div>
 
-          <div className="p-3 bg-blue-50/60 rounded-2xl border border-blue-100 flex items-center justify-between text-xs text-blue-900">
-            <span>Carrier Diesel Rating: <strong>{lorry?.fuel_efficiency_km_per_l || 5.0} km/L</strong></span>
-            <span>Max Payload: <strong>{lorry?.max_weight_kg ? `${lorry.max_weight_kg.toLocaleString()} kg` : '6,000 kg'}</strong></span>
-          </div>
+              <div className="p-3 bg-blue-50/60 rounded-2xl border border-blue-100 flex items-center justify-between text-xs text-blue-900">
+                <span>Carrier Diesel Rating: <strong>{lorry?.fuel_efficiency_km_per_l || 5.5} km/L</strong></span>
+                <span>Max Payload: <strong>{lorry?.max_weight_kg ? `${lorry.max_weight_kg.toLocaleString()} kg` : '6,000 kg'}</strong></span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

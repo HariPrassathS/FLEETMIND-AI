@@ -22,6 +22,9 @@ import {
   Send,
   Lock,
   RotateCcw,
+  Phone,
+  Building2,
+  Package,
 } from 'lucide-react';
 import { DriverGpsTracker } from '../../../components/driver/driver-gps-tracker';
 
@@ -340,6 +343,81 @@ export default function DriverDashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* Customer & Consignee Cargo Manifest Card */}
+      {currentShipment && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5" /> Customer & Consignee Manifest
+            </span>
+            <span className="text-[10px] font-mono font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md">
+              {currentShipment.shipment_code}
+            </span>
+          </div>
+
+          <div className="space-y-3 text-xs">
+            {/* Customer / Shipper Info */}
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-slate-400 font-bold uppercase">1. Shipper / Customer</span>
+                <span className="text-[10px] bg-slate-200/80 text-slate-700 font-bold px-1.5 py-0.5 rounded">PICKUP</span>
+              </div>
+              <strong className="text-slate-900 text-sm font-bold block">
+                {currentShipment.sender_company || currentShipment.customer_name || 'Commercial Shipper'}
+              </strong>
+              <p className="text-slate-600 font-medium text-[11px]">
+                Contact: <strong className="text-slate-800">{currentShipment.sender_name || 'Warehouse Dispatcher'}</strong>
+              </p>
+              <p className="text-slate-500 text-[11px] leading-relaxed">
+                📍 {currentShipment.pickup_address || currentShipment.pickup_city}
+              </p>
+              {currentShipment.sender_phone && (
+                <a
+                  href={`tel:${currentShipment.sender_phone}`}
+                  className="mt-1 inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-[10px] shadow-sm transition"
+                >
+                  <Phone className="w-3 h-3" />
+                  <span>Call Shipper ({currentShipment.sender_phone})</span>
+                </a>
+              )}
+            </div>
+
+            {/* Consignee / Receiver Info */}
+            <div className="bg-blue-50/50 p-3.5 rounded-2xl border border-blue-100 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-blue-600 font-bold uppercase">2. Consignee / Receiver</span>
+                <span className="text-[10px] bg-blue-600 text-white font-bold px-1.5 py-0.5 rounded">DELIVERY</span>
+              </div>
+              <strong className="text-slate-900 text-sm font-bold block">
+                {currentShipment.receiver_company || 'Authorized Receiving Dock'}
+              </strong>
+              <p className="text-slate-600 font-medium text-[11px]">
+                Contact: <strong className="text-slate-800">{currentShipment.receiver_name}</strong>
+              </p>
+              <p className="text-slate-500 text-[11px] leading-relaxed">
+                📍 {currentShipment.destination_address || currentShipment.destination_city}
+              </p>
+              {currentShipment.receiver_phone && (
+                <a
+                  href={`tel:${currentShipment.receiver_phone}`}
+                  className="mt-1 inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[10px] shadow-sm transition"
+                >
+                  <Phone className="w-3 h-3" />
+                  <span>Call Consignee ({currentShipment.receiver_phone})</span>
+                </a>
+              )}
+            </div>
+
+            {/* Special Instructions & Cargo */}
+            {currentShipment.special_instructions && (
+              <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-900">
+                <strong>Handling Note:</strong> {currentShipment.special_instructions}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Progress & Stops sequence */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 space-y-3">

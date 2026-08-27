@@ -241,10 +241,30 @@ export default function DriverRoutePage() {
                 </div>
 
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900">{stop.address}</h4>
-                  {stop.phone && (
-                    <p className="text-[11px] text-slate-500 mt-0.5">Site Rep: {stop.phone}</p>
-                  )}
+                  {(() => {
+                    const matchShp = shipments.find((s) => s.id === stop.shipment_id || s.shipment_code === stop.shipment_id);
+                    const company = stop.stop_type === 'PICKUP'
+                      ? (matchShp?.sender_company || matchShp?.customer_name || 'Shipper Facility')
+                      : (matchShp?.receiver_company || 'Consignee Receiving Bay');
+                    const contact = stop.stop_type === 'PICKUP'
+                      ? (matchShp?.sender_name || 'Warehouse Incharge')
+                      : (matchShp?.receiver_name || 'Site Incharge');
+                    const phone = stop.phone || (stop.stop_type === 'PICKUP' ? matchShp?.sender_phone : matchShp?.receiver_phone);
+
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                          <span className="text-blue-600 font-black">{company}</span>
+                          <span className="text-slate-400">•</span>
+                          <span className="text-slate-600 font-medium">{contact}</span>
+                        </div>
+                        <h4 className="text-xs font-medium text-slate-700">{stop.address}</h4>
+                        {phone && (
+                          <p className="text-[11px] text-slate-500 font-semibold">Contact: {phone}</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {!isDone && (

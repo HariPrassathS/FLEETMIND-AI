@@ -392,3 +392,196 @@ Generate a concise 2-sentence explanation of why this is the optimal operational
     }
   }
 }
+
+/**
+ * AI Feature 5: Smart Vehicle Recommendation Engine
+ * Analyzes ALL candidate vehicles across mileage, cost/km, deadline slack,
+ * deadhead distance, load factor, and trip cost — returns AI-ranked list with rationale.
+ */
+export interface VehicleRankEntry {
+  rank: number;
+  lorry_code: string;
+  decision_type: string;
+  headline: string;
+  reason: string;
+  fuel_efficiency_km_per_l: number;
+  cost_per_km_inr: number;
+  fuel_cost_per_km_inr: number;
+  deadhead_km: number;
+  direct_km: number;
+  total_cost_inr: number;
+  net_savings_inr: number;
+  deadline_slack_mins: number;
+  load_pct: number;
+  score: number;
+}
+
+export interface VehicleRecommendationResult {
+  top_lorry_code: string;
+  ranked: VehicleRankEntry[];
+  summary: string;
+}
+
+export async function generateVehicleRecommendation(params: {
+  shipmentCode: string;
+  pickupCity: string;
+  destinationCity: string;
+  weightKg: number;
+  volumeM3: number;
+  deliveryDeadline: string;
+  candidates: Array<{
+    lorry_code: string;
+    model: string;
+    decision_type: string;
+    fuel_efficiency_km_per_l: number;
+    cost_per_km_inr: number;
+    fuel_cost_per_km_inr: number;
+    deadhead_distance_km?: number;
+    direct_distance_km?: number;
+    projected_route_distance_km: number;
+    additional_distance_km: number;
+    incremental_cost_inr: number;
+    net_savings_inr: number;
+    deadline_buffer_minutes: number;
+    projected_weight_util_pct: number;
+    projected_volume_util_pct: number;
+    deterministic_score: number;
+    is_feasible: boolean;
+    reasons: string[];
+  }>;
+}): Promise<VehicleRecommendationResult> {
+
+  const now = new Date();
+  const deadlineDate = new Date(params.deliveryDeadline);
+  const totalDeadlineSlackMins = Math.round((deadlineDate.getTime() - now.getTime()) / 60000);
+
+  // Build structured candidate table for LLM
+  const candidateTable = params.candidates
+    .map((c, i) => {
+      const deadheadKm = c.deadhead_distance_km ?? Math.round(c.additional_distance_km * 0.35);
+      const directKm = c.direct_distance_km ?? Math.round(c.additional_distance_km * 0.65);
+      const slaSlack = c.deadline_buffer_minutes;
+      const feasible = c.is_feasible ? 'FEASIBLE' : 'INFEASIBLE';
+
+      return `${i + 1}. ${c.lorry_code} | ${c.model} | ${c.decision_type === 'ADD_TO_EXISTING_TRIP' ? 'Consolidate Into Active Trip' : 'Dedicated Dispatch'} | ${feasible}
+   Mileage: ${c.fuel_efficiency_km_per_l} km/L | Fuel Rate: ₹${c.fuel_cost_per_km_inr}/km | Running Rate: ₹${c.cost_per_km_inr}/km
+   Deadhead: ${deadheadKm} km | Direct Delivery: ${directKm} km | Total Route: ${c.projected_route_distance_km} km
+   Trip Cost: ₹${c.incremental_cost_inr.toLocaleString()} | Net Savings vs New Lorry: ₹${c.net_savings_inr.toLocaleString()}
+   SLA Deadline Slack: ${slaSlack >= 0 ? '+' : ''}${slaSlack} mins | Load Factor: ${c.projected_weight_util_pct}% weight / ${c.projected_volume_util_pct}% volume
+   Score: ${c.deterministic_score}/100`;
+    })
+    .join('\n\n');
+
+  const systemPrompt = `You are FleetMind AI — an enterprise freight logistics optimization engine.
+Your task: analyze candidate vehicles and rank them for the given shipment.
+Respond ONLY with valid JSON in this exact format:
+{
+  "top_lorry_code": "L-XXX",
+  "ranked": [
+    {
+      "rank": 1,
+      "lorry_code": "L-XXX",
+      "decision_type": "ADD_TO_EXISTING_TRIP",
+      "headline": "One-line headline max 12 words",
+      "reason": "2 sentences: why this vehicle is the best or worst operational and economic choice, citing specific numbers."
+    }
+  ],
+  "summary": "2-sentence executive summary of the best pick vs the alternatives."
+}
+Include ALL candidates in ranked[]. Base reasoning on: mileage, cost/km, deadline slack, deadhead, load factor, savings. Do NOT invent numbers.`;
+
+  const userPrompt = `Shipment: ${params.shipmentCode} | ${params.weightKg.toLocaleString()} kg, ${params.volumeM3} m³ | ${params.pickupCity} → ${params.destinationCity}
+Deadline: ${deadlineDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (${totalDeadlineSlackMins} mins from now)
+Current Time: ${now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+
+CANDIDATE VEHICLES:
+${candidateTable}
+
+Rank all vehicles best to worst. For each, generate a headline and 2-sentence reason citing actual numbers from above.`;
+
+  try {
+    const raw = await callGroqChat(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      true
+    );
+
+    const parsed = JSON.parse(raw);
+
+    // Enrich ranked entries with numeric data from candidates
+    const enriched: VehicleRankEntry[] = (parsed.ranked || []).map((entry: any) => {
+      const match = params.candidates.find((c) => c.lorry_code === entry.lorry_code);
+      const deadheadKm = match?.deadhead_distance_km ?? Math.round((match?.additional_distance_km ?? 0) * 0.35);
+      const directKm = match?.direct_distance_km ?? Math.round((match?.additional_distance_km ?? 0) * 0.65);
+      return {
+        rank: entry.rank,
+        lorry_code: entry.lorry_code,
+        decision_type: entry.decision_type ?? match?.decision_type ?? 'ASSIGN_NEW_VEHICLE',
+        headline: entry.headline ?? `${entry.lorry_code} — Rank #${entry.rank}`,
+        reason: entry.reason ?? '',
+        fuel_efficiency_km_per_l: match?.fuel_efficiency_km_per_l ?? 0,
+        cost_per_km_inr: match?.cost_per_km_inr ?? 0,
+        fuel_cost_per_km_inr: match?.fuel_cost_per_km_inr ?? 0,
+        deadhead_km: deadheadKm,
+        direct_km: directKm,
+        total_cost_inr: match?.incremental_cost_inr ?? 0,
+        net_savings_inr: match?.net_savings_inr ?? 0,
+        deadline_slack_mins: match?.deadline_buffer_minutes ?? 0,
+        load_pct: match?.projected_weight_util_pct ?? 0,
+        score: match?.deterministic_score ?? 0,
+      };
+    });
+
+    return {
+      top_lorry_code: parsed.top_lorry_code ?? enriched[0]?.lorry_code ?? '',
+      ranked: enriched,
+      summary: parsed.summary ?? '',
+    };
+  } catch {
+    // Deterministic fallback ranking (sort by score desc, feasible first)
+    const sorted = [...params.candidates].sort((a, b) => {
+      if (!a.is_feasible && b.is_feasible) return 1;
+      if (a.is_feasible && !b.is_feasible) return -1;
+      return b.deterministic_score - a.deterministic_score;
+    });
+
+    const ranked: VehicleRankEntry[] = sorted.map((c, i) => {
+      const deadheadKm = c.deadhead_distance_km ?? Math.round(c.additional_distance_km * 0.35);
+      const directKm = c.direct_distance_km ?? Math.round(c.additional_distance_km * 0.65);
+      const isTop = i === 0;
+      const isConsolidation = c.decision_type === 'ADD_TO_EXISTING_TRIP';
+      return {
+        rank: i + 1,
+        lorry_code: c.lorry_code,
+        decision_type: c.decision_type,
+        headline: isTop
+          ? isConsolidation
+            ? `${c.lorry_code} — Optimal Consolidation, Save ₹${c.net_savings_inr.toLocaleString()}`
+            : `${c.lorry_code} — Best Dedicated Carrier at ₹${c.incremental_cost_inr.toLocaleString()}`
+          : `${c.lorry_code} — Alternative Option (Score ${c.deterministic_score})`,
+        reason: isTop
+          ? `${c.lorry_code} achieves the highest score of ${c.deterministic_score}/100 with ${c.fuel_efficiency_km_per_l} km/L fuel economy running at ₹${c.cost_per_km_inr}/km and ${c.deadline_buffer_minutes >= 0 ? '+' : ''}${c.deadline_buffer_minutes} min SLA buffer. ${isConsolidation ? `Consolidation adds only +${c.additional_distance_km} km detour, saving ₹${c.net_savings_inr.toLocaleString()} over a fresh vehicle dispatch.` : `Dedicated dispatch ensures 100% capacity exclusivity over ${c.projected_route_distance_km} km total route.`}`
+          : `${c.lorry_code} ranks #${i + 1} with score ${c.deterministic_score}/100, ${c.fuel_efficiency_km_per_l} km/L mileage, and a total trip cost of ₹${c.incremental_cost_inr.toLocaleString()}. ${c.is_feasible ? 'Operationally feasible but not economically optimal compared to the top pick.' : 'Currently infeasible due to capacity or deadline constraints.'}`,
+        fuel_efficiency_km_per_l: c.fuel_efficiency_km_per_l,
+        cost_per_km_inr: c.cost_per_km_inr,
+        fuel_cost_per_km_inr: c.fuel_cost_per_km_inr,
+        deadhead_km: deadheadKm,
+        direct_km: directKm,
+        total_cost_inr: c.incremental_cost_inr,
+        net_savings_inr: c.net_savings_inr,
+        deadline_slack_mins: c.deadline_buffer_minutes,
+        load_pct: c.projected_weight_util_pct,
+        score: c.deterministic_score,
+      };
+    });
+
+    const top = ranked[0];
+    return {
+      top_lorry_code: top.lorry_code,
+      ranked,
+      summary: `FleetMind AI recommends ${top.lorry_code} (score ${top.score}/100) — ${top.fuel_efficiency_km_per_l} km/L fuel economy at ₹${top.cost_per_km_inr}/km with ${top.deadline_slack_mins >= 0 ? '+' : ''}${top.deadline_slack_mins} min SLA buffer. ${top.net_savings_inr > 0 ? `Consolidation saves ₹${top.net_savings_inr.toLocaleString()} vs dispatching a fresh vehicle.` : 'Dedicated dispatch guarantees full capacity and schedule exclusivity.'}`,
+    };
+  }
+}

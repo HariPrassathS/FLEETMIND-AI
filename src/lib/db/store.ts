@@ -807,6 +807,99 @@ class FleetMindStore {
     return null;
   }
 
+  public registerPendingDispatcher(data: {
+    full_name: string;
+    email: string;
+    phone: string;
+    freight_zone: string;
+    fleet_size: string;
+    experience_years: number;
+    notes?: string;
+  }): { success: boolean; user: UserProfile } {
+    let existing = this.getUserByEmail(data.email);
+    if (existing) {
+      existing.full_name = data.full_name;
+      existing.phone = data.phone;
+      existing.role = 'DISPATCHER';
+      existing.verification_status = 'PENDING_ADMIN_VERIFICATION';
+      existing.verification_details = {
+        freight_zone: data.freight_zone,
+        fleet_size: data.fleet_size,
+        experience_years: data.experience_years,
+        notes: data.notes,
+      };
+      existing.updated_at = new Date().toISOString();
+      this.notify('USER_UPDATED', existing);
+      syncProfileToSupabase(existing);
+      return { success: true, user: existing };
+    }
+
+    const newUser: UserProfile = {
+      id: `user-${Date.now()}`,
+      firebase_uid: `uid-${Date.now()}`,
+      email: data.email,
+      full_name: data.full_name,
+      role: 'DISPATCHER',
+      phone: data.phone,
+      avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+      is_active: true,
+      is_verified: false,
+      verification_status: 'PENDING_ADMIN_VERIFICATION',
+      verification_details: {
+        freight_zone: data.freight_zone,
+        fleet_size: data.fleet_size,
+        experience_years: data.experience_years,
+        notes: data.notes,
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    this.users.push(newUser);
+    this.logAudit(newUser.email, 'DISPATCHER', 'DISPATCHER_APPLICATION_SUBMITTED', 'USER', newUser.id, null, newUser);
+    this.notify('USER_CREATED', newUser);
+    syncProfileToSupabase(newUser);
+    return { success: true, user: newUser };
+  }
+
+  public verifyDispatcherAccount(userId: string, adminEmail = 'admin@fleetmind.ai'): UserProfile | null {
+    const user = this.users.find((u) => u.id === userId || u.email === userId);
+    if (!user) return null;
+    const before = { ...user };
+    user.role = 'DISPATCHER';
+    user.is_active = true;
+    user.is_verified = true;
+    user.verification_status = 'VERIFIED';
+    user.updated_at = new Date().toISOString();
+
+    // If current logged-in user in localStorage is this user, update active user object
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('fleetmind_current_user');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.email?.toLowerCase() === user.email.toLowerCase() || parsed.id === user.id) {
+            localStorage.setItem('fleetmind_current_user', JSON.stringify(user));
+          }
+        } catch {}
+      }
+    }
+
+    this.createNotification({
+      user_id: user.email,
+      type: 'SYSTEM_ALERT',
+      severity: 'LOW',
+      title: 'Dispatcher Command Access Approved!',
+      message: 'Your Dispatcher Command Desk account has been verified by the Administrator. Full operations portal is active.',
+      action_url: '/dispatcher/dashboard',
+    });
+
+    this.logAudit(adminEmail, 'ADMIN', 'DISPATCHER_VERIFIED_BY_ADMIN', 'USER', user.id, before, user);
+    this.notify('USER_UPDATED', user);
+    syncProfileToSupabase(user);
+    return user;
+  }
+
   // --- Shipment Operations ---
   public getShipments(): Shipment[] {
     return [...this.shipments];
@@ -1780,99 +1873,6 @@ class FleetMindStore {
     this.supportTickets.unshift(newTicket);
     this.notify('SUPPORT_TICKET_CREATED', newTicket);
     return newTicket;
-  }
-
-  // --- Landing Page Dispatcher Desk Applications ---
-  public registerPendingDispatcher(data: {
-    full_name: string;
-    email: string;
-    phone: string;
-    freight_zone: string;
-    fleet_size: string;
-    experience_years: number;
-    password?: string;
-    notes?: string;
-  }): { success: boolean; user: UserProfile } {
-    const existing = this.getUserByEmail(data.email);
-    if (existing) {
-      return { success: false, user: existing };
-    }
-
-    const newUser: UserProfile = {
-      id: `user-disp-${Date.now()}`,
-      firebase_uid: `uid-disp-${Date.now()}`,
-      email: data.email,
-      full_name: data.full_name,
-      role: 'DISPATCHER',
-      avatar_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150',
-      is_active: true,
-      is_verified: false,
-      verification_status: 'PENDING_ADMIN_VERIFICATION',
-      verification_details: {
-        freight_zone: data.freight_zone,
-        fleet_size: data.fleet_size,
-        experience_years: data.experience_years,
-        phone: data.phone,
-        notes: data.notes,
-      },
-      phone: data.phone,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    this.users.push(newUser);
-
-    // Create alert for Admin
-    this.createAlert({
-      type: 'DISPATCHER_APPLICATION',
-      severity: 'HIGH',
-      title: `New Dispatcher Desk Application: ${data.full_name}`,
-      message: `${data.full_name} (${data.email}, Corridor: ${data.freight_zone}, Fleet: ${data.fleet_size}) submitted a Dispatcher application for review.`,
-    });
-
-    this.logAudit(newUser.email, 'DISPATCHER', 'DISPATCHER_APPLICATION_SUBMITTED', 'USER', newUser.id, null, newUser);
-    this.notify('DISPATCHER_APPLICATION_SUBMITTED', newUser);
-
-    return { success: true, user: newUser };
-  }
-
-  public getPendingDispatchers(): UserProfile[] {
-    return this.users.filter((u) => u.role === 'DISPATCHER' && u.verification_status === 'PENDING_ADMIN_VERIFICATION');
-  }
-
-  public verifyDispatcherAccount(userId: string, adminEmail = 'admin@fleetmind.ai'): UserProfile | null {
-    const user = this.users.find((u) => u.id === userId);
-    if (!user) return null;
-    const before = { ...user };
-    user.is_verified = true;
-    user.verification_status = 'VERIFIED';
-    user.updated_at = new Date().toISOString();
-
-    // Create notification for Dispatcher
-    this.createNotification({
-      user_id: user.email,
-      type: 'DISPATCHER_PENDING_APPROVAL',
-      title: 'Dispatcher Command Desk Approved! 🚀',
-      message: 'Your FleetMind Dispatcher application has been approved by the Administrator. You now have full access to load consolidation and route optimization.',
-      action_url: '/dispatcher/dashboard',
-    });
-
-    // Dispatch approval email via SMTP
-    if (typeof window !== 'undefined' && user.email) {
-      fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'DISPATCHER_APPROVAL',
-          dispatcherEmail: user.email,
-          dispatcherName: user.full_name,
-        }),
-      }).catch((e) => console.warn('Background Dispatcher approval email notice:', e.message));
-    }
-
-    this.logAudit(adminEmail, 'ADMIN', 'DISPATCHER_VERIFIED', 'USER', user.id, before, user);
-    this.notify('USER_UPDATED', user);
-    return user;
   }
 
   // --- Settings ---

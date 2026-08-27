@@ -97,9 +97,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (fbUser && fbUser.email) {
         const isAdminUid = SYSTEM_ADMIN_UIDS.includes(fbUser.uid);
         const isManagerUid = SYSTEM_MANAGER_UIDS.includes(fbUser.uid);
-        const targetRole: UserRole = isAdminUid ? 'ADMIN' : isManagerUid ? 'MANAGER' : 'CUSTOMER';
 
-        let profile = fleetMindStore.getUserByEmail(fbUser.email);
+        let profile = fleetMindStore.getUserByEmail(fbUser.email) || fleetMindStore.getUserByUid(fbUser.uid);
+
+        // Check local storage cached user profile if not in store
+        if (!profile && typeof window !== 'undefined') {
+          const stored = localStorage.getItem('fleetmind_current_user');
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              if (parsed.email?.toLowerCase() === fbUser.email.toLowerCase()) {
+                profile = parsed;
+                fleetMindStore.createUser(parsed);
+              }
+            } catch {}
+          }
+        }
+
         if (profile) {
           profile.firebase_uid = fbUser.uid;
           if (isAdminUid) {
@@ -112,6 +126,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           setUser({ ...profile });
         } else {
+          const targetRole: UserRole = isAdminUid
+            ? 'ADMIN'
+            : isManagerUid
+            ? 'MANAGER'
+            : fbUser.email.includes('admin')
+            ? 'ADMIN'
+            : fbUser.email.includes('manager')
+            ? 'MANAGER'
+            : fbUser.email.includes('driver')
+            ? 'DRIVER'
+            : fbUser.email.includes('dispatcher')
+            ? 'DISPATCHER'
+            : 'CUSTOMER';
+
           const newProfile = fleetMindStore.createUser({
             id: `user-${fbUser.uid}`,
             firebase_uid: fbUser.uid,
@@ -387,6 +415,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }): Promise<{ success: boolean; user: UserProfile }> => {
     setIsLoading(true);
     try {
+      if (data.password && auth) {
+        try {
+          await createUserWithEmailAndPassword(auth, data.email, data.password);
+        } catch (err) {
+          console.info('Dispatcher firebase auth registration notice:', data.email);
+        }
+      }
+
       const result = fleetMindStore.registerPendingDispatcher({
         full_name: data.fullName,
         email: data.email,

@@ -13,6 +13,7 @@ export interface TruckCapacityVisualProps {
   isSelected?: boolean;
   className?: string;
   showMetrics?: boolean;
+  showTopBadge?: boolean;
 }
 
 export function TruckCapacityVisual({
@@ -23,6 +24,7 @@ export function TruckCapacityVisual({
   isSelected = false,
   className = '',
   showMetrics = true,
+  showTopBadge = true,
 }: TruckCapacityVisualProps) {
   const clipId = useId();
 
@@ -255,40 +257,42 @@ export function TruckCapacityVisual({
       } ${className}`}
     >
       {/* Top Header: Occupancy Badge + Pass/Fail State */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          <span
-            className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-2xs ${
-              projectedFit
-                ? getBadgeStyle(projectedFit.projectedVolumePct)
-                : getBadgeStyle(Math.max(weightOccupancyPct, volumeOccupancyPct))
-            }`}
-          >
-            {projectedFit ? `${projectedFit.projectedVolumePct}% AFTER ASSIGNMENT` : badgeText}
-          </span>
-
-          {hasPlannedPendingPickup && !projectedFit && (
-            <span className="text-[9px] font-bold text-slate-500 uppercase px-1.5 py-0.5 bg-slate-100 rounded">
-              Planned
+      {showTopBadge && (
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-2xs ${
+                projectedFit
+                  ? getBadgeStyle(projectedFit.projectedVolumePct)
+                  : getBadgeStyle(Math.max(weightOccupancyPct, volumeOccupancyPct))
+              }`}
+            >
+              {projectedFit ? `${projectedFit.projectedVolumePct}% AFTER ASSIGNMENT` : badgeText}
             </span>
-          )}
-        </div>
 
-        {/* Projected Feasibility pill */}
-        {projectedFit && (
-          <div>
-            {projectedFit.isFeasible ? (
-              <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                <CheckCircle2 className="w-3 h-3" /> FITS VEHICLE
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full border border-rose-300 animate-pulse">
-                <AlertTriangle className="w-3 h-3" /> {projectedFit.errorMessage || 'OVERLOAD'}
+            {hasPlannedPendingPickup && !projectedFit && (
+              <span className="text-[9px] font-bold text-slate-500 uppercase px-1.5 py-0.5 bg-slate-100 rounded">
+                Planned
               </span>
             )}
           </div>
-        )}
-      </div>
+
+          {/* Projected Feasibility pill */}
+          {projectedFit && (
+            <div>
+              {projectedFit.isFeasible ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                  <CheckCircle2 className="w-3 h-3" /> FITS VEHICLE
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-black text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full border border-rose-300 animate-pulse">
+                  <AlertTriangle className="w-3 h-3" /> {projectedFit.errorMessage || 'OVERLOAD'}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Realistic Side-View Truck SVG Visual */}
       <div className="w-full max-w-[300px] sm:max-w-[320px] mx-auto py-1">

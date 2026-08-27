@@ -149,7 +149,7 @@ export function SmartConsolidationCard({
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
             Evaluated Fleet Options ({analysis.all_options.length} Candidates Analyzed):
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
             {analysis.all_options.map((opt) => {
               const isSelected = opt.option_id === selectedOptionId;
               const isOptConsolidation = opt.decision_type === 'ADD_TO_EXISTING_TRIP';
@@ -164,19 +164,19 @@ export function SmartConsolidationCard({
                   }}
                   className={`p-3 rounded-2xl border text-left transition relative flex flex-col justify-between gap-2 ${
                     isSelected
-                      ? 'border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/30 shadow-sm'
+                      ? 'border-blue-600 bg-blue-50/70 ring-2 ring-blue-600/30 shadow-sm'
                       : 'border-slate-200 bg-white hover:border-slate-300'
                   }`}
                 >
+                  {/* Top Bar: Code, Mileage, Per-KM Rate, Score */}
                   <div className="flex items-center justify-between gap-1">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-xs font-black text-slate-900">{opt.lorry.lorry_code}</span>
-                      <span
-                        className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
-                          isOptConsolidation ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
-                        }`}
-                      >
-                        {isOptConsolidation ? 'Consolidate' : 'Dedicated'}
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-mono">
+                        {opt.fuel_efficiency_km_per_l} km/L
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-500">
+                        ₹{opt.cost_per_km_inr}/km
                       </span>
                     </div>
                     <span className="text-[10px] font-bold text-slate-500 font-mono">
@@ -184,27 +184,39 @@ export function SmartConsolidationCard({
                     </span>
                   </div>
 
-                  {/* Compact Side-View Truck Visual */}
-                  <div className="w-full max-w-[200px] mx-auto opacity-95">
+                  <p className="text-[11px] text-slate-600 font-medium truncate">
+                    {opt.lorry.model}
+                  </p>
+
+                  {/* Compact Clean Side-View Truck Visual (No Green Badges) */}
+                  <div className="w-full max-w-[200px] mx-auto py-0.5 opacity-95">
                     <TruckCapacityVisual
                       lorry={opt.lorry}
                       newShipment={{
                         weight_kg: analysis.shipment.weight_kg,
                         volume_m3: analysis.shipment.volume_m3,
                       }}
+                      showTopBadge={false}
                       showMetrics={false}
                     />
                   </div>
 
-                  <div className="text-[11px] text-slate-600 font-medium truncate">
-                    {opt.existing_corridor}
+                  {/* Clean Text: Capacity & Corridor */}
+                  <div className="text-[10px] text-slate-500 font-medium flex items-center justify-between border-t border-slate-100 pt-1">
+                    <span>
+                      Load: <strong className="text-slate-800 font-bold">{opt.projected_volume_util_pct}%</strong> ({opt.projected_weight_kg.toLocaleString()} kg)
+                    </span>
+                    <span className="text-slate-400">
+                      Free: {opt.remaining_weight_kg.toLocaleString()} kg
+                    </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] pt-1 border-t border-slate-100 font-bold">
-                    <span className="text-slate-500">
-                      {isOptConsolidation ? `+${opt.additional_distance_km} km` : `${opt.projected_route_distance_km} km`}
+                  {/* Bottom Line: Distance & Calculated Cost */}
+                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100 font-bold">
+                    <span className="text-slate-600">
+                      {isOptConsolidation ? `+${opt.additional_distance_km} km detour` : `${opt.projected_route_distance_km} km total`}
                     </span>
-                    <span className={opt.net_savings_inr > 0 ? 'text-emerald-700 font-black' : 'text-slate-700'}>
+                    <span className={opt.net_savings_inr > 0 ? 'text-emerald-700 font-black' : 'text-slate-900 font-black'}>
                       {opt.net_savings_inr > 0 ? `Save ₹${opt.net_savings_inr.toLocaleString()}` : `₹${opt.incremental_cost_inr.toLocaleString()}`}
                     </span>
                   </div>
@@ -217,7 +229,7 @@ export function SmartConsolidationCard({
 
       {/* 3. Detailed Selected Option Card */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 space-y-5">
-        {/* Carrier & Pilot Profile */}
+        {/* Carrier & Pilot Profile with Mileage & Per-KM Cost */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <VehicleAvatar
@@ -228,24 +240,27 @@ export function SmartConsolidationCard({
               size="lg"
             />
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-base font-black text-slate-900">{selectedOption.lorry.lorry_code}</h4>
                 <span className="text-xs font-mono text-slate-400 font-bold">
                   {selectedOption.lorry.registration_number}
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200">
-                  {selectedOption.lorry.fuel_efficiency_km_per_l} km/L
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200">
+                  Mileage: {selectedOption.fuel_efficiency_km_per_l} km/L
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-800 border border-slate-200">
+                  Running Rate: ₹{selectedOption.cost_per_km_inr} / km
                 </span>
               </div>
-              <p className="text-xs text-slate-600 font-medium">
+              <p className="text-xs text-slate-600 font-medium mt-0.5">
                 Pilot: <strong className="text-slate-800">{selectedOption.driver?.name || 'Assigned Commercial Driver'}</strong> • Status:{' '}
                 <span className="text-emerald-600 font-bold uppercase">{selectedOption.lorry.status}</span>
               </p>
             </div>
           </div>
 
-          <div className="bg-slate-50 p-2.5 rounded-2xl text-xs space-y-0.5 border border-slate-100">
-            <span className="text-[10px] font-bold text-slate-400 uppercase block">Corridor Flow</span>
+          <div className="bg-slate-50 p-2.5 rounded-2xl text-xs space-y-0.5 border border-slate-100 shrink-0">
+            <span className="text-[10px] font-bold text-slate-400 uppercase block">Operation Type</span>
             <div className="font-bold text-slate-800 flex items-center gap-1.5">
               <span>{selectedOption.existing_corridor}</span>
             </div>
@@ -265,30 +280,40 @@ export function SmartConsolidationCard({
           />
         </div>
 
-        {/* 5. Metrics & Detour Comparison Grid */}
+        {/* 5. Metrics & Detour Comparison Grid with Mileage, Distance & Calculated Cost */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
           <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Extra Detour</span>
+            <span className="text-[10px] text-slate-400 uppercase font-bold block">
+              {selectedOption.is_existing_trip ? 'Extra Detour' : 'Trip Distance'}
+            </span>
             <strong className="text-sm font-black text-slate-900">
-              +{selectedOption.additional_distance_km} km
+              {selectedOption.is_existing_trip
+                ? `+${selectedOption.additional_distance_km} km`
+                : `${selectedOption.projected_route_distance_km} km`}
             </strong>
-            <span className="text-[10px] text-slate-500 block">+{selectedOption.additional_time_minutes} mins</span>
+            <span className="text-[10px] text-slate-500 block">
+              {selectedOption.deadhead_distance_km
+                ? `${selectedOption.deadhead_distance_km} km deadhead`
+                : `+${selectedOption.additional_time_minutes} mins`}
+            </span>
           </div>
 
           <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Extra Diesel</span>
+            <span className="text-[10px] text-slate-400 uppercase font-bold block">Fuel Consumption</span>
             <strong className="text-sm font-black text-slate-900">
-              +{selectedOption.additional_fuel_liters} L
+              {selectedOption.additional_fuel_liters} L Diesel
             </strong>
-            <span className="text-[10px] text-slate-500 block">₹{selectedOption.additional_fuel_cost_inr.toLocaleString()}</span>
+            <span className="text-[10px] text-slate-500 block">@ {selectedOption.fuel_efficiency_km_per_l} km/L (₹{selectedOption.additional_fuel_cost_inr.toLocaleString()})</span>
           </div>
 
           <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
-            <span className="text-[10px] text-slate-400 uppercase font-bold block">Incremental Cost</span>
+            <span className="text-[10px] text-slate-400 uppercase font-bold block">Calculated Cost</span>
             <strong className="text-sm font-black text-slate-900">
               ₹{selectedOption.incremental_cost_inr.toLocaleString()}
             </strong>
-            <span className="text-[10px] text-slate-500 block">vs ₹{selectedOption.standalone_new_vehicle_cost_inr.toLocaleString()} (New Lorry)</span>
+            <span className="text-[10px] text-slate-500 block">
+              @ ₹{selectedOption.cost_per_km_inr}/km {selectedOption.is_existing_trip ? '(Incremental)' : '+ Dispatch'}
+            </span>
           </div>
 
           <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
@@ -297,7 +322,7 @@ export function SmartConsolidationCard({
               ₹{selectedOption.net_savings_inr.toLocaleString()}
             </strong>
             <span className="text-[10px] text-emerald-600 block font-bold">
-              {selectedOption.net_savings_inr > 0 ? 'High Economic Value' : 'Standard Rate'}
+              {selectedOption.net_savings_inr > 0 ? 'Consolidation Saved' : 'Direct Dispatch Rate'}
             </span>
           </div>
         </div>

@@ -271,15 +271,15 @@ function evaluateTripConsolidation(
 
   // 5. Cost & Fuel Calculations
   const fuel_efficiency_km_per_l = lorry.fuel_efficiency_km_per_l || 7.0;
+  const fuel_cost_per_km_inr = Number((settings.fuel_price_per_liter / fuel_efficiency_km_per_l).toFixed(2));
+  const toll_rate_per_km = 2.2;
+  const driver_rate_per_km = Number(((settings.driver_base_rate_per_km || 6.5) * 0.45).toFixed(2));
+  const cost_per_km_inr = Number((fuel_cost_per_km_inr + toll_rate_per_km + driver_rate_per_km).toFixed(2));
+
   const additional_fuel_liters = Number((additional_distance_km / fuel_efficiency_km_per_l).toFixed(2));
-  const additional_fuel_cost_inr = Math.round(additional_fuel_liters * settings.fuel_price_per_liter);
-
-  // Toll cost calculation
-  const additional_toll_inr = Math.round(additional_distance_km * 2.2);
-
-  // Incremental driver cost (no double charge on base shift)
-  const additional_driver_cost_inr = Math.round(additional_distance_km * (settings.driver_base_rate_per_km * 0.45));
-
+  const additional_fuel_cost_inr = Math.round(additional_distance_km * fuel_cost_per_km_inr);
+  const additional_toll_inr = Math.round(additional_distance_km * toll_rate_per_km);
+  const additional_driver_cost_inr = Math.round(additional_distance_km * driver_rate_per_km);
   const incremental_cost_inr = additional_fuel_cost_inr + additional_toll_inr + additional_driver_cost_inr + 250;
 
   // Standalone new vehicle dispatch baseline cost (for comparative savings)
@@ -391,6 +391,8 @@ function evaluateTripConsolidation(
     corridor_compatibility,
 
     fuel_efficiency_km_per_l,
+    cost_per_km_inr,
+    fuel_cost_per_km_inr,
     additional_fuel_liters,
     additional_fuel_cost_inr,
     additional_toll_inr,
@@ -447,11 +449,16 @@ function evaluateStandaloneNewVehicle(
   const totalDurationMins = Math.round((totalDistKm / avgSpeed) * 60) + 40;
 
   const fuel_efficiency_km_per_l = lorry.fuel_efficiency_km_per_l || 6.5;
+  const fuel_cost_per_km_inr = Number((settings.fuel_price_per_liter / fuel_efficiency_km_per_l).toFixed(2));
+  const toll_rate_per_km = 2.2;
+  const driver_rate_per_km = settings.driver_base_rate_per_km || 6.5;
+  const cost_per_km_inr = Number((fuel_cost_per_km_inr + toll_rate_per_km + driver_rate_per_km).toFixed(2));
+
   const fuelLiters = Number((totalDistKm / fuel_efficiency_km_per_l).toFixed(2));
-  const fuelCost = Math.round(fuelLiters * settings.fuel_price_per_liter);
-  const driverCost = Math.round(totalDistKm * settings.driver_base_rate_per_km);
-  const tollCost = Math.round(totalDistKm * 2.2);
-  const totalCost = Math.round(fuelCost + driverCost + tollCost + settings.fixed_dispatch_cost_per_lorry);
+  const fuelCost = Math.round(totalDistKm * fuel_cost_per_km_inr);
+  const driverCost = Math.round(totalDistKm * driver_rate_per_km);
+  const tollCost = Math.round(totalDistKm * toll_rate_per_km);
+  const totalCost = Math.round(totalDistKm * cost_per_km_inr + settings.fixed_dispatch_cost_per_lorry);
 
   const is_weight_ok = newShipment.weight_kg <= lorry.max_weight_kg;
   const is_volume_ok = newShipment.volume_m3 <= lorry.max_volume_m3;
@@ -472,8 +479,8 @@ function evaluateStandaloneNewVehicle(
   const warning_reasons: string[] = [];
 
   if (is_feasible) {
-    reasons.push(`✓ Dedicated carrier ${lorry.lorry_code} standby near pickup (${deadheadDistKm} km deadhead)`);
-    reasons.push(`✓ 100% dedicated capacity for this consignment`);
+    reasons.push(`✓ Dedicated carrier ${lorry.lorry_code} (${fuel_efficiency_km_per_l} km/L • ₹${cost_per_km_inr}/km)`);
+    reasons.push(`✓ Standby positioning: ${deadheadDistKm} km deadhead + ${directDistKm} km direct delivery`);
     reasons.push(`✓ Full trip arrival in ${Math.round(totalDurationMins / 60)}h ${totalDurationMins % 60}m`);
   } else {
     if (!is_weight_ok) warning_reasons.push(`❌ Insufficient payload capacity (${lorry.max_weight_kg} kg)`);
@@ -552,8 +559,12 @@ function evaluateStandaloneNewVehicle(
     additional_time_minutes: totalDurationMins,
     pickup_deviation_km: deadheadDistKm,
     corridor_compatibility: 'EXCELLENT',
+    deadhead_distance_km: deadheadDistKm,
+    direct_distance_km: directDistKm,
 
     fuel_efficiency_km_per_l,
+    cost_per_km_inr,
+    fuel_cost_per_km_inr,
     additional_fuel_liters: fuelLiters,
     additional_fuel_cost_inr: fuelCost,
     additional_toll_inr: tollCost,

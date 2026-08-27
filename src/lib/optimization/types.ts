@@ -664,9 +664,13 @@ export interface ConsolidationOption {
   additional_time_minutes: number;
   pickup_deviation_km: number;
   corridor_compatibility: CorridorCompatibilityLevel;
+  deadhead_distance_km?: number;
+  direct_distance_km?: number;
 
   // Cost & Fuel Calculations
   fuel_efficiency_km_per_l: number;
+  cost_per_km_inr: number;
+  fuel_cost_per_km_inr: number;
   additional_fuel_liters: number;
   additional_fuel_cost_inr: number;
   additional_toll_inr: number;

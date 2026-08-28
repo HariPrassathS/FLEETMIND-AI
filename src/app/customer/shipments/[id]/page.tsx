@@ -49,6 +49,7 @@ import {
   Zap,
   Receipt,
   IndianRupee,
+  Printer,
 } from 'lucide-react';
 
 const LiveTrackingMapbox = dynamic(
@@ -566,14 +567,24 @@ export default function CustomerTrackingPage() {
 
         {/* Card 5: Commercial Freight Fare & Billing Breakdown */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-6 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
             <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <Receipt className="w-4 h-4 text-emerald-600" />
               5. Commercial Freight Invoice & Rate Breakdown
             </h3>
-            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase">
-              Standard B2B Tariff
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition flex items-center gap-1.5 shadow-xs"
+              >
+                <Printer className="w-3 h-3 text-slate-600" />
+                <span>Print / Download Tax Invoice</span>
+              </button>
+              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase">
+                Standard B2B Tariff
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">

@@ -225,9 +225,13 @@ export default function ShipmentsPage() {
 
     fleetMindStore.createShipment({
       customer_name: parsedData.sender_company || parsedData.sender_name || 'Commercial Shipper',
+      customer_email: 'customer@fleetmind.ai',
       sender_name: parsedData.sender_name || 'Shipper Contact',
       sender_company: parsedData.sender_company,
       sender_phone: parsedData.sender_phone || '+91 98410 00000',
+      receiver_name: parsedData.receiver_name || 'Consignee Receiver',
+      receiver_email: parsedData.receiver_email || 'receiver@clientcorp.in',
+      receiver_phone: parsedData.receiver_phone || '+91 98410 11111',
       description: parsedData.commodity,
       weight_kg: parsedData.weight_kg,
       volume_m3: parsedData.volume_m3 || Number((parsedData.weight_kg / 350).toFixed(1)),

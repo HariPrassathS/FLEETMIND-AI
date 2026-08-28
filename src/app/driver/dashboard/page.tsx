@@ -34,6 +34,7 @@ import {
 import { DriverGpsTracker } from '../../../components/driver/driver-gps-tracker';
 import { TruckCapacityVisual } from '../../../components/brand/truck-capacity-visual';
 import { getLorryLiveCapacity } from '../../../lib/optimization/capacity';
+import { Shipment } from '../../../lib/optimization/types';
 
 export default function DriverDashboardPage() {
   const { user } = useAuth();
@@ -53,6 +54,7 @@ export default function DriverDashboardPage() {
   const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
 
   // Delivery Verification State
+  const [verifyingShipment, setVerifyingShipment] = useState<Shipment | null>(null);
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
   const [verifStep, setVerifStep] = useState<1 | 2 | 3 | 4>(1);
   const [otpInfo, setOtpInfo] = useState<{ otp_code: string; expires_at: string; masked_email: string; masked_phone: string } | null>(null);
@@ -133,12 +135,23 @@ export default function DriverDashboardPage() {
     deadline: currentShipment.delivery_deadline,
   } : null;
 
+  const openVerification = (shipmentToVerify?: Shipment | null) => {
+    const target = shipmentToVerify || currentShipment;
+    if (!target) return;
+    setVerifyingShipment(target);
+    setIsVerificationModalOpen(true);
+    setVerifStep(1);
+    setEnteredOtp('');
+    setOtpError(null);
+    setOtpSuccess(false);
+  };
+
   const handleDriverAction = (eventType: DeliveryEventType, notes?: string, recipient?: string) => {
     if (!currentShipment) return;
 
     const actionData = {
       shipment_id: currentShipment.id,
-      route_id: activeRoute?.id || `RT-${currentShipment.shipment_code}`,
+      route_id: activeRoute?.id || `RT-${currentShipment.shipment_code || 'DEF'}`,
       driver_id: user?.id || currentDriver?.id || 'driver-01',
       driver_name: user?.full_name || currentDriver?.name || 'Driver',
       event_type: eventType,
@@ -160,7 +173,9 @@ export default function DriverDashboardPage() {
 
   // OTP Handlers
   const handleSendOtp = () => {
-    const info = fleetMindStore.createDeliveryOtp(currentShipment.id, user?.id || 'driver-01');
+    const target = verifyingShipment || currentShipment;
+    if (!target) return;
+    const info = fleetMindStore.createDeliveryOtp(target.id, user?.id || 'driver-01');
     setOtpInfo(info);
     setVerifStep(2);
     setOtpError(null);
@@ -168,10 +183,12 @@ export default function DriverDashboardPage() {
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
+    const target = verifyingShipment || currentShipment;
+    if (!target) return;
     setIsVerifyingOtp(true);
     setOtpError(null);
 
-    const result = fleetMindStore.verifyDeliveryOtp(currentShipment.id, enteredOtp);
+    const result = fleetMindStore.verifyDeliveryOtp(target.id, enteredOtp);
     setIsVerifyingOtp(false);
 
     if (result.success) {
@@ -232,10 +249,13 @@ export default function DriverDashboardPage() {
 
   const handleFinalDeliverySubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const target = verifyingShipment || currentShipment;
+    if (!target) return;
     const canvas = canvasRef.current;
     const signatureSvg = canvas ? canvas.toDataURL() : undefined;
+    const targetCode = target.shipment_code;
 
-    fleetMindStore.completeDeliveryProof(currentShipment.id, {
+    fleetMindStore.completeDeliveryProof(target.id, {
       receiver_name: receiverName,
       signature_svg: signatureSvg,
       photo_data_url: photoDataUrl,
@@ -246,8 +266,9 @@ export default function DriverDashboardPage() {
     setVerifStep(4);
     setTimeout(() => {
       setIsVerificationModalOpen(false);
+      setVerifyingShipment(null);
       setVerifStep(1);
-      setSuccessToast(`Consignment ${currentShipment.shipment_code} Marked DELIVERED ✓`);
+      setSuccessToast(`Consignment ${targetCode} Marked DELIVERED ✓`);
     }, 2000);
   };
 
@@ -427,7 +448,6 @@ export default function DriverDashboardPage() {
                 >
                   ARRIVED AT DESTINATION
                 </button>
-
                 <button
                   onClick={() => {
                     setIsVerificationModalOpen(true);
@@ -678,83 +698,103 @@ export default function DriverDashboardPage() {
       })()}
 
       {/* SECURE DELIVERY VERIFICATION & OTP MODAL */}
-      {isVerificationModalOpen && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsVerificationModalOpen(false);
-          }}
-        >
-          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto max-h-[92vh]">
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-5 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className="w-5 h-5" />
-                <div>
-                  <h3 className="text-sm font-bold">Delivery Verification</h3>
-                  <p className="text-[11px] text-emerald-100">Consignment {currentShipment.shipment_code}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsVerificationModalOpen(false)}
-                className="text-white/80 hover:text-white p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 overflow-y-auto">
-              {/* STEP 1: SEND OTP */}
-              {verifStep === 1 && (
-                <div className="space-y-4 text-center py-2">
-                  <div className="w-14 h-14 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-subtle">
-                    <Lock className="w-7 h-7" />
-                  </div>
+      {isVerificationModalOpen && (() => {
+        const activeTarget = verifyingShipment || currentShipment;
+        return (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsVerificationModalOpen(false);
+                setVerifyingShipment(null);
+              }
+            }}
+          >
+            <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-auto max-h-[92vh]">
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-emerald-600 to-teal-700 p-5 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <ShieldCheck className="w-5 h-5" />
                   <div>
-                    <h4 className="text-base font-bold text-slate-900">Authorize Handover via OTP</h4>
-                    <p className="text-xs text-slate-600 max-w-xs mx-auto mt-1 leading-relaxed">
-                      A 6-digit cryptographic one-time password will be dispatched to the receiver contact for identity confirmation.
+                    <h3 className="text-sm font-bold">Delivery Verification</h3>
+                    <p className="text-[11px] text-emerald-100">
+                      Consignment {activeTarget?.shipment_code || 'FM-CONSIGNMENT'}
                     </p>
                   </div>
-
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left text-xs space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-semibold">Receiver:</span>
-                      <strong className="text-slate-900">{currentShipment.receiver_name || 'Rahul Kumar'}</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-semibold">Masked Contact:</span>
-                      <span className="font-mono font-bold text-slate-700">r***@example.com (******1234)</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleSendOtp}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-card transition flex items-center justify-center gap-2"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>SEND DELIVERY OTP TO RECEIVER</span>
-                  </button>
                 </div>
-              )}
+                <button
+                  onClick={() => {
+                    setIsVerificationModalOpen(false);
+                    setVerifyingShipment(null);
+                  }}
+                  className="text-white/80 hover:text-white p-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-              {/* STEP 2: ENTER & VERIFY OTP */}
-              {verifStep === 2 && (
-                <form onSubmit={handleVerifyOtp} className="space-y-4">
-                  <div className="bg-blue-50/70 border border-blue-200 p-3.5 rounded-2xl text-xs text-blue-900 space-y-1">
-                    <div className="flex items-center gap-2 font-bold">
-                      <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                      <span>OTP Dispatched Successfully!</span>
+              <div className="p-6 space-y-4 overflow-y-auto">
+                {/* STEP 1: SEND OTP */}
+                {verifStep === 1 && (
+                  <div className="space-y-4 text-center py-2">
+                    <div className="w-14 h-14 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-subtle">
+                      <Lock className="w-7 h-7" />
                     </div>
-                    <p className="text-[11px] text-blue-700">
-                      Sent to receiver email & SMS notification.
-                      {otpInfo && (
-                        <span className="block mt-1 font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded w-fit">
-                          Consignee Handover OTP: {otpInfo.otp_code}
+                    <div>
+                      <h4 className="text-base font-bold text-slate-900">Authorize Handover via OTP</h4>
+                      <p className="text-xs text-slate-600 max-w-xs mx-auto mt-1 leading-relaxed">
+                        A 6-digit cryptographic one-time password will be dispatched to the receiver contact for identity confirmation.
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left text-xs space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 font-semibold">Receiver:</span>
+                        <strong className="text-slate-900">
+                          {activeTarget?.receiver_name || activeTarget?.receiver_company || 'Authorized Consignee'}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500 font-semibold">Receiver Email:</span>
+                        <span className="font-mono font-bold text-slate-800">
+                          {activeTarget?.receiver_email || activeTarget?.customer_email || 'receiver@fleetmind.ai'}
                         </span>
+                      </div>
+                      {activeTarget?.receiver_phone && (
+                        <div className="flex justify-between">
+                          <span className="text-slate-500 font-semibold">Receiver Phone:</span>
+                          <span className="font-mono font-bold text-slate-800">{activeTarget.receiver_phone}</span>
+                        </div>
                       )}
-                    </p>
+                    </div>
+
+                    <button
+                      onClick={handleSendOtp}
+                      className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-card transition flex items-center justify-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>SEND DELIVERY OTP TO RECEIVER</span>
+                    </button>
                   </div>
+                )}
+
+                {/* STEP 2: ENTER & VERIFY OTP */}
+                {verifStep === 2 && (
+                  <form onSubmit={handleVerifyOtp} className="space-y-4">
+                    <div className="bg-blue-50/70 border border-blue-200 p-3.5 rounded-2xl text-xs text-blue-900 space-y-1">
+                      <div className="flex items-center gap-2 font-bold">
+                        <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                        <span>OTP Dispatched Successfully!</span>
+                      </div>
+                      <p className="text-[11px] text-blue-700">
+                        Sent to {activeTarget?.receiver_email || 'receiver contact'}.
+                        {otpInfo && (
+                          <span className="block mt-1 font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded w-fit">
+                            Consignee Handover OTP: {otpInfo.otp_code}
+                          </span>
+                        )}
+                      </p>
+                    </div>
 
                   {otpError && (
                     <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center gap-2">
@@ -886,7 +926,8 @@ export default function DriverDashboardPage() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Recent On-Road Expenses Card */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-card p-5 space-y-3">

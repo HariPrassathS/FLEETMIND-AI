@@ -85,6 +85,9 @@ export default function DispatcherMaintenancePage() {
       <PortalHeader
         title="Fleet Maintenance & Service Operations"
         subtitle="Manage scheduled preventive maintenance, workshop repairs, service overdue flags, and cost logs"
+        category="FleetMind AI · Maintenance Desk"
+        icon={<Wrench className="w-5 h-5" />}
+        accent="blue"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">
@@ -185,96 +188,120 @@ export default function DispatcherMaintenancePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredRecords.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/60 transition">
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2 font-black text-slate-900">
-                        <Truck className="w-3.5 h-3.5 text-blue-600" />
-                        {r.lorry_code}
+                {filteredRecords.length > 0 ? (
+                  filteredRecords.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-50/60 transition">
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2 font-black text-slate-900">
+                          <Truck className="w-3.5 h-3.5 text-blue-600" />
+                          {r.lorry_code}
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4 font-bold text-slate-800">
+                        {r.service_type.replace(/_/g, ' ')}
+                      </td>
+
+                      <td className="py-4 px-4 text-slate-600 font-medium">
+                        {r.vendor_workshop}
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <div className="space-y-0.5">
+                          <span className="font-bold text-slate-900">
+                            {new Date(r.next_service_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            Last: {new Date(r.last_service_date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4 font-mono font-semibold text-slate-700">
+                        {r.odometer_km.toLocaleString()} km
+                      </td>
+
+                      <td className="py-4 px-4 font-black text-slate-900">
+                        ₹{r.maintenance_cost_inr.toLocaleString()}
+                      </td>
+
+                      <td className="py-4 px-4">
+                        {r.status === 'OVERDUE' && (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800">
+                            ⚠ OVERDUE
+                          </span>
+                        )}
+                        {r.status === 'IN_PROGRESS' && (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800">
+                            IN WORKSHOP
+                          </span>
+                        )}
+                        {r.status === 'SCHEDULED' && (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800">
+                            SCHEDULED
+                          </span>
+                        )}
+                        {r.status === 'COMPLETED' && (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                            COMPLETED
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-4 px-4 text-right">
+                        {r.status === 'SCHEDULED' && (
+                          <button
+                            onClick={() => handleUpdateStatus(r.id, 'IN_PROGRESS')}
+                            className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold rounded-lg transition"
+                          >
+                            Mark in Workshop
+                          </button>
+                        )}
+                        {r.status === 'IN_PROGRESS' && (
+                          <button
+                            onClick={() => handleUpdateStatus(r.id, 'COMPLETED')}
+                            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition"
+                          >
+                            Mark Completed
+                          </button>
+                        )}
+                        {r.status === 'OVERDUE' && (
+                          <button
+                            onClick={() => handleUpdateStatus(r.id, 'IN_PROGRESS')}
+                            className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded-lg transition"
+                          >
+                            Send to Workshop
+                          </button>
+                        )}
+                        {r.status === 'COMPLETED' && (
+                          <span className="text-[11px] text-slate-400 font-semibold">Verified ✓</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="py-16 px-4 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                          <Wrench className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-slate-900">No Maintenance Records Found</p>
+                          <p className="text-xs text-slate-500 max-w-sm mx-auto mt-0.5">
+                            Preventive servicing, workshop repair bookings, and tire rotations will appear here.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setIsAddModalOpen(true)}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+                        >
+                          + Schedule Maintenance Service
+                        </button>
                       </div>
-                    </td>
-
-                    <td className="py-4 px-4 font-bold text-slate-800">
-                      {r.service_type.replace(/_/g, ' ')}
-                    </td>
-
-                    <td className="py-4 px-4 text-slate-600 font-medium">
-                      {r.vendor_workshop}
-                    </td>
-
-                    <td className="py-4 px-4">
-                      <div className="space-y-0.5">
-                        <span className="font-bold text-slate-900">
-                          {new Date(r.next_service_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                        <span className="text-[10px] text-slate-400 block">
-                          Last: {new Date(r.last_service_date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="py-4 px-4 font-mono font-semibold text-slate-700">
-                      {r.odometer_km.toLocaleString()} km
-                    </td>
-
-                    <td className="py-4 px-4 font-black text-slate-900">
-                      ₹{r.maintenance_cost_inr.toLocaleString()}
-                    </td>
-
-                    <td className="py-4 px-4">
-                      {r.status === 'OVERDUE' && (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800">
-                          ⚠ OVERDUE
-                        </span>
-                      )}
-                      {r.status === 'IN_PROGRESS' && (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800">
-                          IN WORKSHOP
-                        </span>
-                      )}
-                      {r.status === 'SCHEDULED' && (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800">
-                          SCHEDULED
-                        </span>
-                      )}
-                      {r.status === 'COMPLETED' && (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
-                          COMPLETED
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="py-4 px-4 text-right">
-                      {r.status === 'SCHEDULED' && (
-                        <button
-                          onClick={() => handleUpdateStatus(r.id, 'IN_PROGRESS')}
-                          className="px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 text-[11px] font-bold rounded-lg transition"
-                        >
-                          Mark in Workshop
-                        </button>
-                      )}
-                      {r.status === 'IN_PROGRESS' && (
-                        <button
-                          onClick={() => handleUpdateStatus(r.id, 'COMPLETED')}
-                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition"
-                        >
-                          Mark Completed
-                        </button>
-                      )}
-                      {r.status === 'OVERDUE' && (
-                        <button
-                          onClick={() => handleUpdateStatus(r.id, 'IN_PROGRESS')}
-                          className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded-lg transition"
-                        >
-                          Send to Workshop
-                        </button>
-                      )}
-                      {r.status === 'COMPLETED' && (
-                        <span className="text-[11px] text-slate-400 font-semibold">Verified ✓</span>
-                      )}
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

@@ -24,7 +24,17 @@ import {
 } from '../optimization/types';
 import { SmartConsolidationEngine } from '../optimization/consolidation';
 import { AuditLog, DeliveryEvent, HealthCheckStatus, SystemAlert, UserProfile } from '../../types/database';
-import { SEED_DRIVERS, SEED_LORRIES, SEED_SHIPMENTS, SEED_SYSTEM_SETTINGS } from './seed-data';
+import {
+  SEED_DRIVERS,
+  SEED_LORRIES,
+  SEED_SHIPMENTS,
+  SEED_SYSTEM_SETTINGS,
+  SEED_MAINTENANCE_RECORDS,
+  SEED_FUEL_RECORDS,
+  SEED_EXPENSES,
+  SEED_VEHICLE_DOCS,
+  SEED_DRIVER_DOCS,
+} from './seed-data';
 import {
   syncShipmentToSupabase,
   syncVehicleToSupabase,
@@ -302,11 +312,11 @@ class FleetMindStore {
   private optimizationRuns: OptimizationResult[] = [];
   private simulationRuns: SimulationResult[] = [];
   private trips: Trip[] = [];
-  private maintenanceRecords: MaintenanceRecord[] = [];
-  private fuelRecords: FuelRecord[] = [];
-  private expenses: ExpenseRecord[] = [];
-  private vehicleDocuments: VehicleDocument[] = [];
-  private driverDocuments: DriverDocument[] = [];
+  private maintenanceRecords: MaintenanceRecord[] = [...SEED_MAINTENANCE_RECORDS];
+  private fuelRecords: FuelRecord[] = [...SEED_FUEL_RECORDS];
+  private expenses: ExpenseRecord[] = [...SEED_EXPENSES];
+  private vehicleDocuments: VehicleDocument[] = [...SEED_VEHICLE_DOCS];
+  private driverDocuments: DriverDocument[] = [...SEED_DRIVER_DOCS];
   private breakdownRecords: BreakdownRecord[] = [];
   private cargoTransfers: CargoTransferRecord[] = [];
   private listeners: Set<(event: string, data?: any) => void> = new Set();
@@ -399,10 +409,44 @@ class FleetMindStore {
       if (t) this.trips = JSON.parse(t);
 
       const exp = localStorage.getItem('fleetmind_expenses');
-      if (exp) this.expenses = JSON.parse(exp);
+      if (exp) {
+        const parsed = JSON.parse(exp);
+        this.expenses = Array.isArray(parsed) && parsed.length > 0 ? parsed : [...SEED_EXPENSES];
+      } else {
+        this.expenses = [...SEED_EXPENSES];
+      }
 
       const fuel = localStorage.getItem('fleetmind_fuel_records');
-      if (fuel) this.fuelRecords = JSON.parse(fuel);
+      if (fuel) {
+        const parsed = JSON.parse(fuel);
+        this.fuelRecords = Array.isArray(parsed) && parsed.length > 0 ? parsed : [...SEED_FUEL_RECORDS];
+      } else {
+        this.fuelRecords = [...SEED_FUEL_RECORDS];
+      }
+
+      const maint = localStorage.getItem('fleetmind_maintenance_records');
+      if (maint) {
+        const parsed = JSON.parse(maint);
+        this.maintenanceRecords = Array.isArray(parsed) && parsed.length > 0 ? parsed : [...SEED_MAINTENANCE_RECORDS];
+      } else {
+        this.maintenanceRecords = [...SEED_MAINTENANCE_RECORDS];
+      }
+
+      const vdoc = localStorage.getItem('fleetmind_vehicle_documents');
+      if (vdoc) {
+        const parsed = JSON.parse(vdoc);
+        this.vehicleDocuments = Array.isArray(parsed) && parsed.length > 0 ? parsed : [...SEED_VEHICLE_DOCS];
+      } else {
+        this.vehicleDocuments = [...SEED_VEHICLE_DOCS];
+      }
+
+      const ddoc = localStorage.getItem('fleetmind_driver_documents');
+      if (ddoc) {
+        const parsed = JSON.parse(ddoc);
+        this.driverDocuments = Array.isArray(parsed) && parsed.length > 0 ? parsed : [...SEED_DRIVER_DOCS];
+      } else {
+        this.driverDocuments = [...SEED_DRIVER_DOCS];
+      }
 
       const al = localStorage.getItem('fleetmind_alerts');
       if (al) this.alerts = JSON.parse(al);
@@ -431,6 +475,9 @@ class FleetMindStore {
       localStorage.setItem('fleetmind_trips', JSON.stringify(this.trips));
       localStorage.setItem('fleetmind_expenses', JSON.stringify(this.expenses));
       localStorage.setItem('fleetmind_fuel_records', JSON.stringify(this.fuelRecords));
+      localStorage.setItem('fleetmind_maintenance_records', JSON.stringify(this.maintenanceRecords));
+      localStorage.setItem('fleetmind_vehicle_documents', JSON.stringify(this.vehicleDocuments));
+      localStorage.setItem('fleetmind_driver_documents', JSON.stringify(this.driverDocuments));
       localStorage.setItem('fleetmind_alerts', JSON.stringify(this.alerts));
       localStorage.setItem('fleetmind_audit_logs', JSON.stringify(this.auditLogs));
     } catch (e) {

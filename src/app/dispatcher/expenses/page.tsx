@@ -80,6 +80,9 @@ export default function DispatcherExpensesPage() {
       <PortalHeader
         title="Fleet Operating Expenses & Toll Hub"
         subtitle="Manage logistics operational expenses, FASTag highway tolls, maintenance invoices, and driver allowances"
+        category="FleetMind AI · Expense Ledger"
+        icon={<Receipt className="w-5 h-5" />}
+        accent="blue"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">
@@ -156,60 +159,84 @@ export default function DispatcherExpensesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredExpenses.map((exp) => {
-                  const est = exp.estimated_amount_inr || exp.amount_inr;
-                  const diff = exp.amount_inr - est;
-                  return (
-                    <tr key={exp.id} className="hover:bg-slate-50/60 transition">
-                      <td className="py-4 px-4 font-bold text-slate-900">
-                        {new Date(exp.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </td>
+                {filteredExpenses.length > 0 ? (
+                  filteredExpenses.map((exp) => {
+                    const est = exp.estimated_amount_inr || exp.amount_inr;
+                    const diff = exp.amount_inr - est;
+                    return (
+                      <tr key={exp.id} className="hover:bg-slate-50/60 transition">
+                        <td className="py-4 px-4 font-bold text-slate-900">
+                          {new Date(exp.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
 
-                      <td className="py-4 px-4">
-                        {getCategoryBadge(exp.category)}
-                      </td>
+                        <td className="py-4 px-4">
+                          {getCategoryBadge(exp.category)}
+                        </td>
 
-                      <td className="py-4 px-4 font-semibold text-slate-800">
-                        {exp.description}
-                      </td>
+                        <td className="py-4 px-4 font-semibold text-slate-800">
+                          {exp.description}
+                        </td>
 
-                      <td className="py-4 px-4">
-                        <div className="space-y-0.5">
-                          <span className="font-black text-slate-900 flex items-center gap-1">
-                            <Truck className="w-3.5 h-3.5 text-blue-600" />
-                            {exp.lorry_code || 'Fleet'}
-                          </span>
-                          {exp.trip_code && (
-                            <span className="text-[10px] text-slate-400 block font-mono">
-                              {exp.trip_code}
+                        <td className="py-4 px-4">
+                          <div className="space-y-0.5">
+                            <span className="font-black text-slate-900 flex items-center gap-1">
+                              <Truck className="w-3.5 h-3.5 text-blue-600" />
+                              {exp.lorry_code || 'Fleet'}
                             </span>
+                            {exp.trip_code && (
+                              <span className="text-[10px] text-slate-400 block font-mono">
+                                {exp.trip_code}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="py-4 px-4">
+                          <div className="space-y-0.5">
+                            <span className="font-black text-slate-900 text-sm">
+                              ₹{exp.amount_inr.toLocaleString()}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block">
+                              Est: ₹{est.toLocaleString()}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="py-4 px-4 text-right">
+                          {diff === 0 ? (
+                            <span className="text-[11px] font-bold text-slate-400">On Budget</span>
+                          ) : diff > 0 ? (
+                            <span className="text-[11px] font-bold text-rose-600">+₹{diff.toLocaleString()} Over</span>
+                          ) : (
+                            <span className="text-[11px] font-bold text-emerald-600">-₹{Math.abs(diff).toLocaleString()} Under</span>
                           )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="py-16 px-4 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                          <Receipt className="w-6 h-6" />
                         </div>
-                      </td>
-
-                      <td className="py-4 px-4">
-                        <div className="space-y-0.5">
-                          <span className="font-black text-slate-900 text-sm">
-                            ₹{exp.amount_inr.toLocaleString()}
-                          </span>
-                          <span className="text-[10px] text-slate-400 block">
-                            Est: ₹{est.toLocaleString()}
-                          </span>
+                        <div>
+                          <p className="text-sm font-black text-slate-900">No Expense Records Found</p>
+                          <p className="text-xs text-slate-500 max-w-sm mx-auto mt-0.5">
+                            Tolls, driver allowances, warehouse loading tariffs, and parking receipts will appear here.
+                          </p>
                         </div>
-                      </td>
-
-                      <td className="py-4 px-4 text-right">
-                        {diff === 0 ? (
-                          <span className="text-[11px] font-bold text-slate-400">On Budget</span>
-                        ) : diff > 0 ? (
-                          <span className="text-[11px] font-bold text-rose-600">+₹{diff.toLocaleString()} Over</span>
-                        ) : (
-                          <span className="text-[11px] font-bold text-emerald-600">-₹{Math.abs(diff).toLocaleString()} Under</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        <button
+                          onClick={() => setIsAddModalOpen(true)}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+                        >
+                          + Add Expense Record
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

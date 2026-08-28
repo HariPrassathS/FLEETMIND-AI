@@ -68,6 +68,9 @@ export default function DispatcherFuelPage() {
       <PortalHeader
         title="Fleet Fuel Telemetry & Consumption Hub"
         subtitle="Track diesel logging, efficiency metrics (km/L), station receipts, and corridor fuel expenses"
+        category="FleetMind AI · Fuel Telemetry"
+        icon={<Fuel className="w-5 h-5" />}
+        accent="amber"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">
@@ -142,66 +145,90 @@ export default function DispatcherFuelPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredRecords.map((f) => (
-                  <tr key={f.id} className="hover:bg-slate-50/60 transition">
-                    <td className="py-4 px-4">
-                      <div className="space-y-0.5">
-                        <span className="font-bold text-slate-900">
-                          {new Date(f.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                {filteredRecords.length > 0 ? (
+                  filteredRecords.map((f) => (
+                    <tr key={f.id} className="hover:bg-slate-50/60 transition">
+                      <td className="py-4 px-4">
+                        <div className="space-y-0.5">
+                          <span className="font-bold text-slate-900">
+                            {new Date(f.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            {new Date(f.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <div className="space-y-0.5">
+                          <span className="font-black text-slate-900 flex items-center gap-1.5">
+                            <Truck className="w-3.5 h-3.5 text-blue-600" />
+                            {f.lorry_code}
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                            <User className="w-3 h-3 text-slate-400" />
+                            {f.driver_name || 'Assigned Driver'}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <div className="space-y-0.5">
+                          <span className="font-bold text-slate-900">{f.fuel_quantity_liters} Liters</span>
+                          <span className="text-[10px] text-slate-400 block">@ ₹{f.fuel_price_per_liter}/L</span>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <span className="font-black text-slate-900 text-sm">
+                          ₹{f.total_cost_inr.toLocaleString()}
                         </span>
-                        <span className="text-[10px] text-slate-400 block">
-                          {new Date(f.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <div className="space-y-0.5">
+                          <span className="font-mono font-semibold text-slate-900">{f.odometer_km.toLocaleString()} km</span>
+                          <span className="text-[10px] text-slate-400 block">+{f.distance_km} km trip</span>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          f.efficiency_km_per_l >= 5.0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          <Gauge className="w-3 h-3" />
+                          {f.efficiency_km_per_l} km/L
                         </span>
+                      </td>
+
+                      <td className="py-4 px-4 text-slate-600 font-medium">
+                        {f.fuel_station || 'Highway Petroleum Hub'}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="py-16 px-4 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                          <Fuel className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-slate-900">No Fuel Logs Recorded</p>
+                          <p className="text-xs text-slate-500 max-w-sm mx-auto mt-0.5">
+                            Diesel purchase logs, fuel efficiency metrics, and station invoices will appear here.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setIsAddModalOpen(true)}
+                          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+                        >
+                          + Log Fuel Purchase
+                        </button>
                       </div>
-                    </td>
-
-                    <td className="py-4 px-4">
-                      <div className="space-y-0.5">
-                        <span className="font-black text-slate-900 flex items-center gap-1.5">
-                          <Truck className="w-3.5 h-3.5 text-blue-600" />
-                          {f.lorry_code}
-                        </span>
-                        <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
-                          <User className="w-3 h-3 text-slate-400" />
-                          {f.driver_name || 'Assigned Driver'}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="py-4 px-4">
-                      <div className="space-y-0.5">
-                        <span className="font-bold text-slate-900">{f.fuel_quantity_liters} Liters</span>
-                        <span className="text-[10px] text-slate-400 block">@ ₹{f.fuel_price_per_liter}/L</span>
-                      </div>
-                    </td>
-
-                    <td className="py-4 px-4">
-                      <span className="font-black text-slate-900 text-sm">
-                        ₹{f.total_cost_inr.toLocaleString()}
-                      </span>
-                    </td>
-
-                    <td className="py-4 px-4">
-                      <div className="space-y-0.5">
-                        <span className="font-mono font-semibold text-slate-900">{f.odometer_km.toLocaleString()} km</span>
-                        <span className="text-[10px] text-slate-400 block">+{f.distance_km} km trip</span>
-                      </div>
-                    </td>
-
-                    <td className="py-4 px-4">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        f.efficiency_km_per_l >= 5.0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                      }`}>
-                        <Gauge className="w-3 h-3" />
-                        {f.efficiency_km_per_l} km/L
-                      </span>
-                    </td>
-
-                    <td className="py-4 px-4 text-slate-600 font-medium">
-                      {f.fuel_station || 'Highway Petroleum Hub'}
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>

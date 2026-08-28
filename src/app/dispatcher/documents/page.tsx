@@ -112,6 +112,9 @@ export default function DispatcherDocumentsPage() {
       <PortalHeader
         title="Vehicle & Driver Compliance Documents"
         subtitle="Manage statutory RC certificates, commercial insurance policies, fitness certificates, and driver licenses"
+        category="FleetMind AI · Compliance Docs"
+        icon={<FileCheck className="w-5 h-5" />}
+        accent="blue"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">
@@ -207,67 +210,105 @@ export default function DispatcherDocumentsPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {activeTab === 'vehicles' ? (
-                  vDocs.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-slate-50/60 transition">
-                      <td className="py-4 px-4">
-                        <span className="font-black text-slate-900 flex items-center gap-1.5">
-                          <Truck className="w-3.5 h-3.5 text-blue-600" />
-                          {doc.lorry_code}
-                        </span>
-                      </td>
-
-                      <td className="py-4 px-4 font-bold text-slate-800">
-                        {doc.document_type}
-                      </td>
-
-                      <td className="py-4 px-4 font-mono font-semibold text-slate-900">
-                        {doc.document_number}
-                      </td>
-
-                      <td className="py-4 px-4 text-slate-600">
-                        {new Date(doc.issue_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </td>
-
-                      <td className="py-4 px-4 font-bold text-slate-900">
-                        {new Date(doc.expiry_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </td>
-
-                      <td className="py-4 px-4">
-                        {getStatusBadge(doc.status)}
+                  vDocs.length > 0 ? (
+                    vDocs.map((doc) => (
+                      <tr key={doc.id} className="hover:bg-slate-50/60 transition">
+                        <td className="py-4 px-4">
+                          <span className="font-black text-slate-900 flex items-center gap-1.5">
+                            <Truck className="w-3.5 h-3.5 text-blue-600" />
+                            {doc.lorry_code}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 font-bold text-slate-800">
+                          {doc.document_type}
+                        </td>
+                        <td className="py-4 px-4 font-mono font-semibold text-slate-900">
+                          {doc.document_number}
+                        </td>
+                        <td className="py-4 px-4 text-slate-600">
+                          {new Date(doc.issue_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                        <td className="py-4 px-4 font-bold text-slate-900">
+                          {new Date(doc.expiry_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                        <td className="py-4 px-4">
+                          {getStatusBadge(doc.status)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-16 px-4 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-3">
+                          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <FileCheck className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-slate-900">No Vehicle Documents Recorded</p>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-0.5">
+                              RC books, commercial insurance policies, fitness certificates, and permits will appear here.
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+                          >
+                            + Upload Vehicle Document
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ))
+                  )
                 ) : (
-                  dDocs.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-slate-50/60 transition">
-                      <td className="py-4 px-4">
-                        <span className="font-black text-slate-900 flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-blue-600" />
-                          {doc.driver_name}
-                        </span>
-                      </td>
-
-                      <td className="py-4 px-4 font-bold text-slate-800">
-                        {doc.document_type.replace(/_/g, ' ')}
-                      </td>
-
-                      <td className="py-4 px-4 font-mono font-semibold text-slate-900">
-                        {doc.document_number}
-                      </td>
-
-                      <td className="py-4 px-4 text-slate-600">
-                        {new Date(doc.issue_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </td>
-
-                      <td className="py-4 px-4 font-bold text-slate-900">
-                        {new Date(doc.expiry_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </td>
-
-                      <td className="py-4 px-4">
-                        {getStatusBadge(doc.status)}
+                  dDocs.length > 0 ? (
+                    dDocs.map((doc) => (
+                      <tr key={doc.id} className="hover:bg-slate-50/60 transition">
+                        <td className="py-4 px-4">
+                          <span className="font-black text-slate-900 flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5 text-blue-600" />
+                            {doc.driver_name}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 font-bold text-slate-800">
+                          {doc.document_type.replace(/_/g, ' ')}
+                        </td>
+                        <td className="py-4 px-4 font-mono font-semibold text-slate-900">
+                          {doc.document_number}
+                        </td>
+                        <td className="py-4 px-4 text-slate-600">
+                          {new Date(doc.issue_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                        <td className="py-4 px-4 font-bold text-slate-900">
+                          {new Date(doc.expiry_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                        <td className="py-4 px-4">
+                          {getStatusBadge(doc.status)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-16 px-4 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-3">
+                          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <User className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-slate-900">No Driver Documents Recorded</p>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-0.5">
+                              Heavy vehicle driving licenses, medical certificates, and ID proofs will appear here.
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+                          >
+                            + Upload Driver Document
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ))
+                  )
                 )}
               </tbody>
             </table>

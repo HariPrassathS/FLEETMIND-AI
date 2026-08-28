@@ -57,7 +57,75 @@ export function generateUniqueShipmentCode(): string {
 export const SEED_USERS: UserProfile[] = [];
 export const SEED_CUSTOMERS: any[] = [];
 export const SEED_ALERTS: SystemAlert[] = [];
-export const SEED_AUDIT_LOGS: AuditLog[] = [];
+
+export const SEED_AUDIT_LOGS: AuditLog[] = [
+  {
+    id: 'audit-001',
+    user_email: 'admin@fleetmind.ai',
+    user_role: 'ADMIN',
+    action: 'SYSTEM_BOOTSTRAP',
+    entity: 'SYSTEM_KERNEL',
+    entity_id: 'SYS-2026',
+    before_data: null,
+    after_data: { fleet_size: 10, corridors: ['NH44', 'NH45', 'NH48'], neural_engine: 'Groq/qwen3' },
+    created_at: new Date(Date.now() - 3600 * 1000 * 24).toISOString(),
+  },
+  {
+    id: 'audit-002',
+    user_email: 'admin@fleetmind.ai',
+    user_role: 'ADMIN',
+    action: 'TARIFF_CALIBRATION',
+    entity: 'SYSTEM_SETTINGS',
+    entity_id: 'config-01',
+    before_data: { fuel_price_per_liter: 94.0, driver_base_rate_per_km: 5.5 },
+    after_data: { fuel_price_per_liter: 96.5, driver_base_rate_per_km: 6.0 },
+    created_at: new Date(Date.now() - 3600 * 1000 * 18).toISOString(),
+  },
+  {
+    id: 'audit-003',
+    user_email: 'admin@fleetmind.ai',
+    user_role: 'ADMIN',
+    action: 'USER_ROLE_VERIFICATION',
+    entity: 'USER_PROFILE',
+    entity_id: 'user-disp-01',
+    before_data: { role: 'DISPATCHER', status: 'PENDING_ADMIN_VERIFICATION' },
+    after_data: { role: 'DISPATCHER', status: 'VERIFIED', corridor: 'South India Corridor' },
+    created_at: new Date(Date.now() - 3600 * 1000 * 12).toISOString(),
+  },
+  {
+    id: 'audit-004',
+    user_email: 'dispatcher@fleetmind.ai',
+    user_role: 'DISPATCHER',
+    action: 'OPTIMIZATION_VRP_EXECUTION',
+    entity: 'OPTIMIZATION_RUN',
+    entity_id: 'OPT-2026-0827-01',
+    before_data: { unassigned_shipments: 8, estimated_cost: 47840 },
+    after_data: { routes_generated: 3, net_savings_inr: 13520, fuel_saved_liters: 104 },
+    created_at: new Date(Date.now() - 3600 * 1000 * 8).toISOString(),
+  },
+  {
+    id: 'audit-005',
+    user_email: 'dispatcher@fleetmind.ai',
+    user_role: 'DISPATCHER',
+    action: 'CARRIER_DISPATCH',
+    entity: 'ROUTE',
+    entity_id: 'ROUTE-L-03',
+    before_data: { lorry_status: 'AVAILABLE' },
+    after_data: { lorry_status: 'ON_ROUTE', driver: 'Murugan Selvam', destination: 'Chennai Port' },
+    created_at: new Date(Date.now() - 3600 * 1000 * 4).toISOString(),
+  },
+  {
+    id: 'audit-006',
+    user_email: 'driver@fleetmind.ai',
+    user_role: 'DRIVER',
+    action: 'DELIVERY_HANDSHAKE_VERIFIED',
+    entity: 'SHIPMENT',
+    entity_id: 'FM-260828-9689',
+    before_data: { status: 'IN_TRANSIT' },
+    after_data: { status: 'DELIVERED', otp_verified: true, timestamp: new Date().toISOString() },
+    created_at: new Date(Date.now() - 3600 * 1000 * 1).toISOString(),
+  },
+];
 
 export const SEED_OPTIMIZATION_RUNS: OptimizationResult[] = [
   {
@@ -229,7 +297,7 @@ class FleetMindStore {
   private notifications: NotificationItem[] = [];
   private supportTickets: any[] = [];
   private alerts: SystemAlert[] = [];
-  private auditLogs: AuditLog[] = [];
+  private auditLogs: AuditLog[] = [...SEED_AUDIT_LOGS];
   private systemSettings: SystemSettings = { ...SEED_SYSTEM_SETTINGS };
   private optimizationRuns: OptimizationResult[] = [];
   private simulationRuns: SimulationResult[] = [];
@@ -338,6 +406,14 @@ class FleetMindStore {
 
       const al = localStorage.getItem('fleetmind_alerts');
       if (al) this.alerts = JSON.parse(al);
+
+      const aud = localStorage.getItem('fleetmind_audit_logs');
+      if (aud) {
+        const parsed = JSON.parse(aud);
+        this.auditLogs = Array.isArray(parsed) && parsed.length > 0 ? parsed : [...SEED_AUDIT_LOGS];
+      } else {
+        this.auditLogs = [...SEED_AUDIT_LOGS];
+      }
     } catch (e) {
       console.warn('[LocalStorage] Load error:', e);
     }
@@ -356,6 +432,7 @@ class FleetMindStore {
       localStorage.setItem('fleetmind_expenses', JSON.stringify(this.expenses));
       localStorage.setItem('fleetmind_fuel_records', JSON.stringify(this.fuelRecords));
       localStorage.setItem('fleetmind_alerts', JSON.stringify(this.alerts));
+      localStorage.setItem('fleetmind_audit_logs', JSON.stringify(this.auditLogs));
     } catch (e) {
       console.warn('[LocalStorage] Save error:', e);
     }

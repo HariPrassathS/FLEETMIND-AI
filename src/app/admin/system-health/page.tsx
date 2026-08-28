@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
 import { initSupabaseStoreSync } from '../../../lib/db/supabase-sync';
 import {
@@ -86,41 +87,33 @@ export default function AdminSystemHealthPage() {
 
   return (
     <>
-      {/* Dark Premium Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 px-6 sm:px-10 py-8 border-b border-white/10">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
-                <Activity className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-[10px] font-mono tracking-widest text-emerald-300 uppercase">FleetMind AI · System Administration</p>
-                <h1 className="text-xl sm:text-2xl font-black text-white">System Health Monitor</h1>
-              </div>
-            </div>
-            <button
-              onClick={runHealthChecks}
-              disabled={isRefreshing}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Checking...' : 'Run Health Check'}
-            </button>
-          </div>
-
-          {/* Overall Status Banner */}
-          <div className={`mt-4 inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl border ${overallConfig[overallHealth].bg}`}>
-            <div className={`w-2.5 h-2.5 rounded-full ${overallHealth === 'HEALTHY' ? 'bg-emerald-400 animate-pulse' : overallHealth === 'DEGRADED' ? 'bg-amber-400 animate-pulse' : 'bg-rose-400'}`} />
-            <span className={`text-sm font-black ${overallConfig[overallHealth].text}`}>{overallConfig[overallHealth].label}</span>
-            <span className="text-white/40 text-[11px] font-medium">
-              Checked at {checkedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </span>
-          </div>
-        </div>
-      </div>
+      <PortalHeader
+        title="System Health Monitor"
+        subtitle="Real-time uptime, API latency benchmarks, database health & third-party service status"
+        category="FleetMind AI · System Administration"
+        icon={<Activity className="w-5 h-5" />}
+        accent="emerald"
+        rightElement={
+          <button
+            onClick={runHealthChecks}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/20 transition disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Checking...' : 'Run Health Check'}
+          </button>
+        }
+      />
 
       <main className="p-4 sm:p-8 space-y-8 max-w-7xl mx-auto w-full">
+        {/* Overall Status Banner */}
+        <div className={`inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border ${overallConfig[overallHealth].bg}`}>
+          <div className={`w-2.5 h-2.5 rounded-full ${overallHealth === 'HEALTHY' ? 'bg-emerald-400 animate-pulse' : overallHealth === 'DEGRADED' ? 'bg-amber-400 animate-pulse' : 'bg-rose-400'}`} />
+          <span className={`text-sm font-black ${overallConfig[overallHealth].text}`}>{overallConfig[overallHealth].label}</span>
+          <span className="text-slate-500 text-[11px] font-medium">
+            · Checked at {checkedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </span>
+        </div>
 
         {/* Summary Strip */}
         <div className="grid grid-cols-3 gap-4">

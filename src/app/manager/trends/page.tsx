@@ -29,6 +29,9 @@ export default function ManagerTrendsPage() {
       <PortalHeader
         title="Freight Trends & Predictive Forecasting"
         subtitle="Corridor demand forecasting, seasonal agricultural freight spikes & predictive fleet capacity needs"
+        category="FleetMind AI · Predictive Intelligence"
+        icon={<LineChartIcon className="w-5 h-5" />}
+        accent="indigo"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">

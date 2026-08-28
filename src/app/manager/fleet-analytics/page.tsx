@@ -65,17 +65,13 @@ export default function ManagerFleetAnalyticsPage() {
 
   return (
     <>
-      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 px-6 sm:px-10 py-8 border-b border-white/10">
-        <div className="max-w-7xl mx-auto flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
-            <Truck className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <p className="text-[10px] font-mono tracking-widest text-blue-300 uppercase">FleetMind AI · Fleet Intelligence</p>
-            <h1 className="text-xl sm:text-2xl font-black text-white">Fleet Analytics & Utilization</h1>
-          </div>
-        </div>
-      </div>
+      <PortalHeader
+        title="Fleet Analytics & Utilization"
+        subtitle="Commercial vehicle telemetry, carrier availability ratios, payload capacity & distance logs"
+        category="FleetMind AI · Fleet Intelligence"
+        icon={<Truck className="w-5 h-5" />}
+        accent="blue"
+      />
 
       <main className="p-4 sm:p-8 space-y-8 max-w-7xl mx-auto w-full">
 

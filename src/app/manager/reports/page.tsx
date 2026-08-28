@@ -200,6 +200,9 @@ export default function ManagerReportsPage() {
       <PortalHeader
         title="Executive Reports & Export Center"
         subtitle="Download live CSV audits and JSON ledgers for transportation spend, fleet assets, driver hours & optimization ROI"
+        category="FleetMind AI · Reports Intelligence"
+        icon={<FileSpreadsheet className="w-5 h-5" />}
+        accent="blue"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">

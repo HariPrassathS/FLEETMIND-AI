@@ -71,6 +71,9 @@ export default function AdminDriversPage() {
       <PortalHeader
         title="Driver Pilot Registry"
         subtitle="Commercial driver licensing, assigned vehicle pairings, shift windows & availability status"
+        category="FleetMind AI · Driver Pool"
+        icon={<UserCheck className="w-5 h-5" />}
+        accent="purple"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">

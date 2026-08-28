@@ -81,23 +81,13 @@ export default function ManagerFuelPage() {
 
   return (
     <>
-      {/* Dark Premium Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-amber-950 to-slate-900 px-6 sm:px-10 py-8 border-b border-white/10">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg">
-              <Fuel className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="text-[10px] font-mono tracking-widest text-amber-300 uppercase">FleetMind AI · Fuel Intelligence Module</p>
-              <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">Diesel Fuel Consumption & Fleet Economy</h1>
-            </div>
-          </div>
-          <p className="text-sm text-slate-400 font-medium ml-13">
-            Vehicle efficiency rankings · Carbon emissions · Cost per km · Eco-grade benchmarking
-          </p>
-        </div>
-      </div>
+      <PortalHeader
+        title="Diesel Fuel Consumption & Fleet Economy"
+        subtitle="Vehicle efficiency rankings · Carbon emissions · Cost per km · Eco-grade benchmarking"
+        category="FleetMind AI · Fuel Intelligence Module"
+        icon={<Fuel className="w-5 h-5" />}
+        accent="amber"
+      />
 
       <main className="p-4 sm:p-8 space-y-8 max-w-7xl mx-auto w-full">
 

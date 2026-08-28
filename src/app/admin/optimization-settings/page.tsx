@@ -34,6 +34,9 @@ export default function AdminOptimizationSettingsPage() {
       <PortalHeader
         title="Optimization Objective Weights"
         subtitle="Calibrate multi-objective heuristic trade-offs between direct fuel burn, deadline risk & payload density"
+        category="FleetMind AI · Heuristic Weights"
+        icon={<Sliders className="w-5 h-5" />}
+        accent="purple"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-4xl mx-auto w-full">

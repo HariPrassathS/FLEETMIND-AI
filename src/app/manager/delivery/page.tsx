@@ -27,6 +27,9 @@ export default function ManagerDeliveryPage() {
       <PortalHeader
         title="Delivery Performance & SLA Analytics"
         subtitle="On-time delivery benchmarks, delay root-cause analysis, turnaround duration & client satisfaction"
+        category="FleetMind AI · SLA & Delivery"
+        icon={<CheckCircle2 className="w-5 h-5" />}
+        accent="emerald"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">

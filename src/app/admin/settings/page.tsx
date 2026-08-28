@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { PortalHeader } from '../../../components/layout/portal-header';
 import { fleetMindStore } from '../../../lib/db/store';
-import { Settings, CheckCircle2, DollarSign, Fuel, Truck } from 'lucide-react';
+import { Settings, CheckCircle2, DollarSign, Fuel, Truck, Sliders } from 'lucide-react';
 
 export default function AdminSettingsPage() {
   const currentSettings = fleetMindStore.getSystemSettings();
@@ -36,6 +36,9 @@ export default function AdminSettingsPage() {
       <PortalHeader
         title="System Operational Settings"
         subtitle="Configure commercial fuel price benchmarks, driver compensation rates & transit formulas"
+        category="FleetMind AI · Tariff Configuration"
+        icon={<Sliders className="w-5 h-5" />}
+        accent="purple"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-4xl mx-auto w-full">

@@ -17,6 +17,9 @@ export default function AdminReportsPage() {
       <PortalHeader
         title="Administrative Platform Audits"
         subtitle="Download compliance records, user access logs, vehicle registrations & optimization run ledgers"
+        category="FleetMind AI · Compliance Reports"
+        icon={<FileText className="w-5 h-5" />}
+        accent="purple"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">

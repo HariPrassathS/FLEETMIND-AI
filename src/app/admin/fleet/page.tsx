@@ -51,18 +51,22 @@ export default function AdminFleetPage() {
 
   return (
     <>
-      {/* Dark Premium Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 px-6 sm:px-10 py-8 border-b border-white/10">
-        <div className="max-w-7xl mx-auto flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-            <Truck className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <p className="text-[10px] font-mono tracking-widest text-blue-300 uppercase">FleetMind AI · Admin Panel</p>
-            <h1 className="text-xl sm:text-2xl font-black text-white">Fleet Vehicle Registry</h1>
-          </div>
-        </div>
-      </div>
+      <PortalHeader
+        title="Fleet Vehicle Registry"
+        subtitle="Commercial vehicle specifications, tare weight limits, fuel efficiency baselines & maintenance logs"
+        category="FleetMind AI · Fleet Administration"
+        icon={<Truck className="w-5 h-5" />}
+        accent="blue"
+        rightElement={
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Register New Vehicle
+          </button>
+        }
+      />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">
         {/* Fleet KPI Cards */}

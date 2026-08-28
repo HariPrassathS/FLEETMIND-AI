@@ -124,36 +124,22 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-      {/* Dark Premium Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-slate-900 px-6 sm:px-10 py-8 border-b border-white/10">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="text-[10px] font-mono tracking-widest text-purple-300 uppercase">FleetMind AI · System Administration</p>
-              <h1 className="text-xl sm:text-2xl font-black text-white leading-tight">Platform Command Center</h1>
-            </div>
+      <PortalHeader
+        title="Platform Command Center"
+        subtitle="Global platform health · User roles · Vehicle registry · Fuel configuration · Audit records"
+        category="FleetMind AI · System Administration"
+        icon={<Shield className="w-5 h-5" />}
+        accent="purple"
+        rightElement={
+          <div className="hidden lg:flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2">
+            <span className="text-[11px] font-bold text-white/50">Total ROI: <strong className="text-emerald-300">₹{totalSavings.toLocaleString('en-IN')}</strong></span>
+            <span className="text-white/20">|</span>
+            <span className="text-[11px] font-bold text-white/50">Fleet: <strong className="text-blue-300">{lorries.length} units</strong></span>
+            <span className="text-white/20">|</span>
+            <span className="text-[11px] font-bold text-white/50">Diesel: <strong className="text-amber-300">₹{settings.fuel_price_per_liter}/L</strong></span>
           </div>
-          <p className="text-sm text-slate-400 font-medium ml-13">
-            Global platform health · User roles · Vehicle registry · Fuel configuration · Audit records
-          </p>
-          {/* Summary banner */}
-          <div className="mt-4 flex flex-wrap gap-3 ml-13">
-            {[
-              { label: 'Total ROI', value: `₹${totalSavings.toLocaleString('en-IN')}`, color: 'text-emerald-300' },
-              { label: 'Fleet', value: `${lorries.length} vehicles`, color: 'text-blue-300' },
-              { label: 'Diesel', value: `₹${settings.fuel_price_per_liter}/L`, color: 'text-amber-300' },
-              { label: 'Alerts', value: `${alerts.length} active`, color: alerts.length > 0 ? 'text-rose-300' : 'text-slate-400' },
-            ].map((b) => (
-              <span key={b.label} className="text-[11px] font-bold text-white/50">
-                {b.label}: <span className={b.color}>{b.value}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       <main className="p-4 sm:p-8 space-y-8 max-w-7xl mx-auto w-full">
 

@@ -79,6 +79,9 @@ export default function AdminUsersPage() {
       <PortalHeader
         title="User & Access Management"
         subtitle="Manage administrator, dispatcher, driver, customer, and manager accounts and verify applications"
+        category="FleetMind AI · Access Control"
+        icon={<Users className="w-5 h-5" />}
+        accent="purple"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">

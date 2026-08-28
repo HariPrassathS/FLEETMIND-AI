@@ -74,17 +74,13 @@ export default function ManagerCostPage() {
 
   return (
     <>
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-6 sm:px-10 py-8 border-b border-white/10">
-        <div className="max-w-7xl mx-auto flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
-            <IndianRupee className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <p className="text-[10px] font-mono tracking-widest text-indigo-300 uppercase">FleetMind AI · Cost Intelligence</p>
-            <h1 className="text-xl sm:text-2xl font-black text-white">Transportation Cost Analytics</h1>
-          </div>
-        </div>
-      </div>
+      <PortalHeader
+        title="Transportation Cost Analytics"
+        subtitle="Operating cost breakdown by fuel, driver, toll & dispatch overhead with AI savings tracking"
+        category="FleetMind AI · Cost Intelligence"
+        icon={<IndianRupee className="w-5 h-5" />}
+        accent="indigo"
+      />
 
       <main className="p-4 sm:p-8 space-y-8 max-w-7xl mx-auto w-full">
 

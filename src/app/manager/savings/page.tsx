@@ -26,6 +26,9 @@ export default function ManagerSavingsPage() {
       <PortalHeader
         title="Optimization ROI & Cost Savings"
         subtitle="Cumulative savings realized through load consolidation, 2-opt route efficiency & fuel price heuristics"
+        category="FleetMind AI · ROI Analytics"
+        icon={<TrendingUp className="w-5 h-5" />}
+        accent="emerald"
       />
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">

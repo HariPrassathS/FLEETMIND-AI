@@ -8,6 +8,7 @@ import { fleetMindStore } from '../../../lib/db/store';
 import { ShipmentCategory, ShipmentPriority } from '../../../lib/optimization/types';
 import { parseShipmentWithAI, ParsedShipment } from '../../../lib/ai/groq';
 import { CITY_COORDINATES, resolveCityCoordinates } from '../../../lib/routing/city-coordinates';
+import { calculateFreightCost, FreightCostBreakdown } from '../../../lib/routing/pricing-calculator';
 import {
   Package,
   Sparkles,
@@ -26,6 +27,7 @@ import {
   FileText,
   Truck,
   Plus,
+  Receipt,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -164,6 +166,20 @@ export default function DispatcherCreateShipmentPage() {
     }
   };
 
+  // Live Cost Calculation based on km, weight, volume
+  const liveCost: FreightCostBreakdown = calculateFreightCost({
+    pickupCity: form.pickupCity,
+    destCity: form.destinationCity,
+    pickupLat: form.pickupLat,
+    pickupLng: form.pickupLng,
+    destLat: form.destinationLat,
+    destLng: form.destinationLng,
+    weightKg: Number(form.weightKg) || 100,
+    volumeM3: Number(form.volumeM3) || 0.5,
+    category: form.category,
+    priority: form.priority,
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -186,6 +202,7 @@ export default function DispatcherCreateShipmentPage() {
         priority: form.priority,
         delivery_deadline: new Date(form.deliveryDeadline).toISOString(),
         value_inr: Number(form.valueInr),
+        estimated_cost: liveCost.totalCost,
         sender_name: form.senderName,
         sender_company: form.senderCompany,
         sender_phone: form.senderPhone,
@@ -544,6 +561,63 @@ export default function DispatcherCreateShipmentPage() {
                   onChange={(e) => setForm({ ...form, valueInr: Number(e.target.value) })}
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 bg-white font-bold text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* LIVE DYNAMIC TARIFF & VOLUMETRIC RATE CALCULATOR CARD */}
+          <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-950 text-white rounded-3xl p-6 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/15">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">Dynamic Freight Tariff Calculation</h3>
+                </div>
+                <p className="text-[11px] text-blue-200 mt-0.5">
+                  Calculated dynamically from corridor distance (km), gross mass (kg), bay volume (m³), and priority SLA
+                </p>
+              </div>
+
+              <div className="text-left sm:text-right">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Estimated Freight Tariff</span>
+                <div className="text-2xl sm:text-3xl font-black text-emerald-400 flex items-center sm:justify-end gap-1">
+                  <span>₹{liveCost.totalCost.toLocaleString('en-IN')}</span>
+                </div>
+                <span className="text-[10px] text-blue-200 font-semibold block">Incl. ₹{liveCost.gstAmount.toLocaleString('en-IN')} GST (18%)</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl space-y-1">
+                <span className="text-[10px] text-blue-200 font-bold uppercase block">1. Distance Tariff</span>
+                <strong className="text-white block font-bold truncate">
+                  {liveCost.distanceKm} km
+                </strong>
+                <span className="text-[11px] text-emerald-300 font-mono font-bold">@ ₹{liveCost.ratePerKm}/km = ₹{liveCost.distanceCost.toLocaleString('en-IN')}</span>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl space-y-1">
+                <span className="text-[10px] text-blue-200 font-bold uppercase block">2. Payload Weight</span>
+                <strong className="text-white block font-bold">
+                  {Number(form.weightKg || 100).toLocaleString()} kg
+                </strong>
+                <span className="text-[11px] text-blue-200 font-mono font-bold">@ ₹{liveCost.ratePerKg}/kg = ₹{liveCost.weightCost.toLocaleString('en-IN')}</span>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl space-y-1">
+                <span className="text-[10px] text-blue-200 font-bold uppercase block">3. Volume & Density</span>
+                <strong className="text-white block font-bold">
+                  {form.volumeM3 || 0.5} m³
+                </strong>
+                <span className="text-[11px] text-purple-200 font-mono font-bold">Volumetric: {liveCost.volumetricWeightKg} kg (₹{liveCost.volumeCost})</span>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl space-y-1">
+                <span className="text-[10px] text-blue-200 font-bold uppercase block">4. Multipliers</span>
+                <strong className="text-white block font-bold truncate">
+                  {form.category} • {form.priority}
+                </strong>
+                <span className="text-[11px] text-amber-300 font-mono font-bold">{liveCost.priorityMultiplier}x SLA rate</span>
               </div>
             </div>
           </div>

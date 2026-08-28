@@ -1,12 +1,13 @@
 /**
  * FleetMind AI — Commercial Freight Pricing & Cost Estimation Engine
  * 
- * Computes transparent, real-time logistics rates based on:
- *  - Real Haversine Highway Distance (KM) between Hubs / Coordinates
- *  - Gross Payload Weight (kg) & Bay Volume (m³)
- *  - Commodity Handling Multipliers (Hazardous, Cold-Chain, Fragile, Medical)
+ * Computes transparent, real-time logistics rates dynamically based on:
+ *  - Real Haversine & Curvature Highway Distance (KM) between Hubs / Coordinates
+ *  - Gross Physical Weight (kg / tonnes)
+ *  - Bay Volume (m³) and Volumetric Chargeable Weight (250 kg/m³ IATA standard)
+ *  - Commodity Category Handling Multipliers (Hazardous, Perishable, Fragile, Medical)
  *  - SLA Priority Multipliers (Critical, High, Medium, Low)
- *  - GST (18% Statutory Commercial Freight Tax)
+ *  - 18% Statutory Commercial Freight GST
  */
 
 import { ShipmentCategory, ShipmentPriority } from '../optimization/types';
@@ -18,6 +19,9 @@ export interface FreightCostBreakdown {
   distanceCost: number;
   weightCost: number;
   volumeCost: number;
+  volumetricWeightKg: number;
+  chargeableWeightKg: number;
+  isVolumetricDominant: boolean;
   categoryMultiplier: number;
   categorySurcharge: number;
   priorityMultiplier: number;
@@ -26,6 +30,8 @@ export interface FreightCostBreakdown {
   subtotal: number;
   gstAmount: number;
   totalCost: number;
+  ratePerKm: number;
+  ratePerKg: number;
   currency: string;
 }
 
@@ -36,6 +42,7 @@ export interface FreightCostParams {
   pickupLng?: number;
   destLat?: number;
   destLng?: number;
+  distanceKm?: number;
   weightKg: number;
   volumeM3?: number;
   category?: ShipmentCategory;
@@ -68,22 +75,35 @@ export function calculateFreightCost(params: FreightCostParams): FreightCostBrea
     lng: params.destLng || 77.5946,
   });
 
-  const rawDistance = calculateHaversineKm(pickup.lat, pickup.lng, dest.lat, dest.lng);
-  const distanceKm = Math.max(35, Math.round(rawDistance * 1.18)); // Highway curvature factor
+  // Calculate highway distance with road curvature factor (1.18x)
+  let distanceKm = params.distanceKm;
+  if (!distanceKm || distanceKm <= 0) {
+    const rawDistance = calculateHaversineKm(pickup.lat, pickup.lng, dest.lat, dest.lng);
+    distanceKm = Math.max(35, Math.round(rawDistance * 1.18));
+  }
 
-  // 1. Base Freight Booking Fee
+  // 1. Base Dispatch Booking & Terminal Handling
   const baseFare = 450;
 
-  // 2. Distance Cost (₹14.00 per Highway KM)
-  const distanceCost = Math.round(distanceKm * 14.0);
+  // 2. Highway Distance Cost (Tiered: ₹14/km for short runs, ₹11/km for long haul)
+  const ratePerKm = distanceKm > 400 ? 11.5 : distanceKm > 150 ? 13.0 : 15.0;
+  const distanceCost = Math.round(distanceKm * ratePerKm);
 
-  // 3. Weight Payload Cost (₹3.50 per kg)
+  // 3. Weight & Volumetric Weight Calculations
   const weightKg = Math.max(1, params.weightKg || 100);
-  const weightCost = Math.round(weightKg * 3.5);
+  const volumeM3 = Math.max(0.05, params.volumeM3 || Number((weightKg / 300).toFixed(2)));
+  
+  // Standard Commercial Volumetric Density: 1 m³ = 250 kg chargeable equivalent
+  const volumetricWeightKg = Math.round(volumeM3 * 250);
+  const isVolumetricDominant = volumetricWeightKg > weightKg;
+  const chargeableWeightKg = Math.max(weightKg, volumetricWeightKg);
 
-  // 4. Volume Bay Usage Cost (₹120 per m³)
-  const volumeM3 = Math.max(0.1, params.volumeM3 || (weightKg / 300));
-  const volumeCost = Math.round(volumeM3 * 120);
+  // Weight Rate: Tiered cost per kg
+  const ratePerKg = chargeableWeightKg > 5000 ? 2.2 : chargeableWeightKg > 1500 ? 2.8 : 3.5;
+  const weightCost = Math.round(weightKg * ratePerKg);
+
+  // 4. Volume Bay Usage Cost (₹90 per m³)
+  const volumeCost = Math.round(volumeM3 * 90);
 
   // 5. Commodity Category Multiplier
   let categoryMultiplier = 1.0;
@@ -94,7 +114,7 @@ export function calculateFreightCost(params: FreightCostParams): FreightCostBrea
   else if (cat === 'ELECTRONICS' || cat === 'FRAGILE') categoryMultiplier = 1.15;
   else if (cat === 'INDUSTRIAL' || cat === 'AUTOMOTIVE') categoryMultiplier = 1.10;
 
-  // 6. Fragile Handling Flat Addon
+  // 6. Fragile Handling Surcharge
   const fragileSurcharge = params.fragile ? 350 : 0;
 
   // 7. Priority SLA Multiplier
@@ -118,6 +138,9 @@ export function calculateFreightCost(params: FreightCostParams): FreightCostBrea
     distanceCost,
     weightCost,
     volumeCost,
+    volumetricWeightKg,
+    chargeableWeightKg,
+    isVolumetricDominant,
     categoryMultiplier,
     categorySurcharge,
     priorityMultiplier,
@@ -126,6 +149,8 @@ export function calculateFreightCost(params: FreightCostParams): FreightCostBrea
     subtotal,
     gstAmount,
     totalCost,
+    ratePerKm,
+    ratePerKg,
     currency: 'INR',
   };
 }

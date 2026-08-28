@@ -926,35 +926,35 @@ export default function CreateShipmentPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl space-y-1">
-                <span className="text-[10px] text-blue-200 font-bold uppercase block">Corridor Route</span>
+                <span className="text-[10px] text-blue-200 font-bold uppercase block">1. Distance Tariff</span>
                 <strong className="text-white block font-bold truncate">
-                  {form.senderCity || 'Origin'} ➔ {form.receiverCity || 'Destination'}
+                  {manualCost.distanceKm} km
                 </strong>
-                <span className="text-[11px] text-emerald-300 font-mono font-bold">{manualCost.distanceKm} km (₹{manualCost.distanceCost})</span>
+                <span className="text-[11px] text-emerald-300 font-mono font-bold">@ ₹{manualCost.ratePerKm}/km = ₹{manualCost.distanceCost.toLocaleString()}</span>
               </div>
 
               <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl space-y-1">
-                <span className="text-[10px] text-blue-200 font-bold uppercase block">Cargo Mass & Volume</span>
+                <span className="text-[10px] text-blue-200 font-bold uppercase block">2. Payload Weight</span>
                 <strong className="text-white block font-bold">
-                  {form.weightKg || 100} kg • {form.volumeM3 || 0.5} m³
+                  {Number(form.weightKg || 100).toLocaleString()} kg
                 </strong>
-                <span className="text-[11px] text-blue-200 font-mono font-bold">₹{manualCost.weightCost + manualCost.volumeCost} payload fee</span>
+                <span className="text-[11px] text-blue-200 font-mono font-bold">@ ₹{manualCost.ratePerKg}/kg = ₹{manualCost.weightCost.toLocaleString()}</span>
               </div>
 
               <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl space-y-1">
-                <span className="text-[10px] text-blue-200 font-bold uppercase block">Handling Multipliers</span>
+                <span className="text-[10px] text-blue-200 font-bold uppercase block">3. Volume & Density</span>
                 <strong className="text-white block font-bold">
-                  {form.category} • {form.priority} SLA
+                  {form.volumeM3 || 0.5} m³
                 </strong>
-                <span className="text-[11px] text-amber-300 font-mono font-bold">{manualCost.priorityMultiplier}x SLA rate</span>
+                <span className="text-[11px] text-purple-200 font-mono font-bold">Volumetric: {manualCost.volumetricWeightKg} kg (₹{manualCost.volumeCost})</span>
               </div>
 
               <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl space-y-1">
-                <span className="text-[10px] text-blue-200 font-bold uppercase block">Statutory GST (18%)</span>
-                <strong className="text-white block font-bold">
-                  Subtotal: ₹{manualCost.subtotal.toLocaleString()}
+                <span className="text-[10px] text-blue-200 font-bold uppercase block">4. SLA & GST (18%)</span>
+                <strong className="text-white block font-bold truncate">
+                  {form.category} • {form.priority}
                 </strong>
-                <span className="text-[11px] text-slate-300 font-mono font-bold">+₹{manualCost.gstAmount} tax</span>
+                <span className="text-[11px] text-amber-300 font-mono font-bold">+₹{manualCost.gstAmount.toLocaleString()} GST</span>
               </div>
             </div>
           </div>

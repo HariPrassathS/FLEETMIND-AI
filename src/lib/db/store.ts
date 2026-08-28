@@ -2685,6 +2685,7 @@ class FleetMindStore {
           action: 'DELIVERY_INVOICE',
           receiverEmail: invoiceEmail,
           receiverName: data.receiver_name || shipment.receiver_name || 'Authorized Consignee',
+          shipmentId: shipment.id,
           shipmentCode: shipment.shipment_code,
           pickupCity: shipment.pickup_city,
           destinationCity: shipment.destination_city,

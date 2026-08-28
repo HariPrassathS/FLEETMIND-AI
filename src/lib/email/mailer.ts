@@ -127,11 +127,12 @@ export async function sendDispatcherApprovalEmail({
 }
 
 /**
- * Send Automated Consignment Invoice & Delivery Receipt to Receiver
+ * Send Automated Consignment Invoice & Delivery Receipt to Receiver (Public Link Enabled)
  */
 export async function sendDeliveryInvoiceEmail({
   receiverEmail,
   receiverName,
+  shipmentId,
   shipmentCode,
   pickupCity,
   destinationCity,
@@ -144,6 +145,7 @@ export async function sendDeliveryInvoiceEmail({
 }: {
   receiverEmail: string;
   receiverName: string;
+  shipmentId?: string;
   shipmentCode: string;
   pickupCity: string;
   destinationCity: string;
@@ -155,6 +157,8 @@ export async function sendDeliveryInvoiceEmail({
   vehicleCode?: string;
 }) {
   const invoiceNumber = `INV-${shipmentCode.replace(/[^A-Za-z0-9]/g, '')}`;
+  const targetId = shipmentId || shipmentCode;
+  const invoiceUrl = `https://fleetmind-ai.vercel.app/invoice/${encodeURIComponent(targetId)}`;
   const subject = `[FleetMind AI] Official Tax Invoice & Delivery Receipt - ${shipmentCode} (#${invoiceNumber})`;
   const formattedDate = new Date(deliveredAt).toLocaleString('en-IN', {
     dateStyle: 'medium',
@@ -184,6 +188,19 @@ export async function sendDeliveryInvoiceEmail({
         <p style="font-size: 14px; color: #475569; line-height: 1.6; margin-bottom: 20px;">
           Your freight consignment has been successfully handed over and cryptographically verified at <strong>${destinationCity}</strong> on <strong>${formattedDate}</strong>. Below is your official freight receipt and tax invoice.
         </p>
+
+        <!-- Direct Web Link for Recipient (No Login Required) -->
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 18px; text-align: center; margin-bottom: 22px;">
+          <p style="font-size: 13px; font-weight: bold; color: #166534; margin: 0 0 10px;">
+            📄 Official B2B Tax Invoice & Proof of Delivery Available
+          </p>
+          <a href="${invoiceUrl}" target="_blank" style="background: #1677FF; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 10px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 10px rgba(22,119,255,0.25);">
+            View & Download Invoice (PDF) →
+          </a>
+          <span style="display: block; font-size: 11px; color: #15803d; margin-top: 8px;">
+            No login required • Instant 1-click access for consignees
+          </span>
+        </div>
 
         <!-- Invoice Details Table -->
         <table style="width: 100%; border-collapse: collapse; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">

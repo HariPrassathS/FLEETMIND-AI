@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Trash2,
+  Receipt,
 } from 'lucide-react';
 
 export default function CustomerShipmentsPage() {
@@ -205,6 +206,16 @@ export default function CustomerShipmentsPage() {
               </div>
 
               <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                {s.status === 'DELIVERED' && (
+                  <Link
+                    href={`/invoice/${s.id}`}
+                    target="_blank"
+                    className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                  >
+                    <Receipt className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Invoice PDF</span>
+                  </Link>
+                )}
                 <Link
                   href={`/customer/shipments/${s.id}`}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-card transition flex items-center gap-1.5"

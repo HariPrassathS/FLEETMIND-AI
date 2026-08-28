@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
       const result = await sendDeliveryInvoiceEmail({
         receiverEmail: data.receiverEmail,
         receiverName: data.receiverName || 'Authorized Consignee',
+        shipmentId: data.shipmentId,
         shipmentCode: data.shipmentCode,
         pickupCity: data.pickupCity || 'Origin Hub',
         destinationCity: data.destinationCity || 'Destination Dock',

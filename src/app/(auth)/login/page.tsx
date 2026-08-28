@@ -325,7 +325,7 @@ function LoginContent() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => quickFill('manager@fleetmind.ai', 'Password@123')}
+                      onClick={() => quickFill('manager@fleetmind.ai', 'PASSWORD')}
                       className="p-2 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-50 text-amber-800 font-bold text-left transition flex items-center gap-1.5"
                     >
                       <BarChart3 className="w-3.5 h-3.5 text-amber-600 shrink-0" />

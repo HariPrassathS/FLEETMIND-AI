@@ -90,7 +90,23 @@ export default function DispatcherCreateShipmentPage() {
     setParsedData(null);
 
     try {
-      const result = await parseShipmentWithAI(aiPrompt);
+      let result: ParsedShipment | null = null;
+      try {
+        const res = await fetch('/api/ai/parse-shipment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: aiPrompt }),
+        });
+        if (res.ok) {
+          result = await res.json();
+        } else {
+          result = await parseShipmentWithAI(aiPrompt);
+        }
+      } catch {
+        result = await parseShipmentWithAI(aiPrompt);
+      }
+
+      if (!result) throw new Error('Could not parse text');
       setParsedData(result);
 
       // Auto-populate form

@@ -42,7 +42,7 @@ export async function callGroqChat(
 
   const modelsToTry = [
     'qwen/qwen3.8-27b',
-    'groq/compound',
+    'qwen/qwen3.6-27b',
     'groq/compound-mini',
     'openai/gpt-oss-20b',
   ];
@@ -61,6 +61,7 @@ export async function callGroqChat(
           model,
           messages,
           temperature: 0.1,
+          max_tokens: 1024,
           response_format: jsonMode ? { type: 'json_object' } : undefined,
         }),
       });
@@ -80,7 +81,10 @@ export async function callGroqChat(
       const rawContent = data.choices?.[0]?.message?.content as string | undefined;
       if (rawContent) {
         // Strip <think>...</think> reasoning blocks (Qwen3 chain-of-thought output)
-        const content = rawContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        let content = rawContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        if (!content && rawContent.includes('</think>')) {
+          content = rawContent.split('</think>')[1]?.trim() || rawContent;
+        }
         if (content) return content;
       }
     } catch (err: any) {

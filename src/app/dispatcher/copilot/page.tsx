@@ -62,7 +62,22 @@ export default function FleetMindAIPage() {
     setIsLoading(true);
 
     try {
-      const response = await answerCopilotQuestion(textToSend);
+      let response: { answer: string; toolUsed: string; toolData: any };
+      try {
+        const res = await fetch('/api/ai/copilot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: textToSend }),
+        });
+        if (res.ok) {
+          response = await res.json();
+        } else {
+          response = await answerCopilotQuestion(textToSend);
+        }
+      } catch {
+        response = await answerCopilotQuestion(textToSend);
+      }
+
       const copilotMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
         sender: 'copilot',
@@ -90,6 +105,9 @@ export default function FleetMindAIPage() {
       <PortalHeader
         title="FleetMind AI Assistant"
         subtitle="Operational Decision Intelligence with Safe Tool-Calling and Strict Hallucination Control"
+        category="FleetMind AI · Neural Copilot"
+        icon={<Bot className="w-5 h-5" />}
+        accent="purple"
       />
 
       <main className="p-4 sm:p-6 max-w-5xl mx-auto w-full flex-1 flex flex-col h-[calc(100vh-100px)]">

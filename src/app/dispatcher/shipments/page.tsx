@@ -192,7 +192,22 @@ export default function ShipmentsPage() {
     setIsAiParsing(true);
     setAiError(null);
     try {
-      const parsed = await parseShipmentWithAI(aiPrompt);
+      let parsed: ParsedShipment | null = null;
+      try {
+        const res = await fetch('/api/ai/parse-shipment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: aiPrompt }),
+        });
+        if (res.ok) {
+          parsed = await res.json();
+        } else {
+          parsed = await parseShipmentWithAI(aiPrompt);
+        }
+      } catch {
+        parsed = await parseShipmentWithAI(aiPrompt);
+      }
+
       if (parsed) {
         setParsedData(parsed);
       } else {

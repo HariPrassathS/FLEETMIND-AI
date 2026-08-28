@@ -34,18 +34,17 @@ export async function callGroqChat(
 ): Promise<string> {
   const apiKey =
     process.env.GROQ_API_KEY ||
-    process.env.NEXT_PUBLIC_GROQ_API_KEY ||
-    'gsk_rZgQzLg2z97vN1k91F96W7GqLz29g4x382F99Q12456789';
+    process.env.NEXT_PUBLIC_GROQ_API_KEY;
 
   if (!apiKey) {
     throw new Error('GROQ_API_KEY_NOT_CONFIGURED');
   }
 
   const modelsToTry = [
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'mixtral-8x7b-32768',
-    'gemma2-9b-it',
+    'qwen/qwen3.8-27b',
+    'groq/compound',
+    'groq/compound-mini',
+    'openai/gpt-oss-20b',
   ];
 
   let lastError: Error | null = null;
@@ -78,9 +77,11 @@ export async function callGroqChat(
       }
 
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (content) {
-        return content;
+      const rawContent = data.choices?.[0]?.message?.content as string | undefined;
+      if (rawContent) {
+        // Strip <think>...</think> reasoning blocks (Qwen3 chain-of-thought output)
+        const content = rawContent.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        if (content) return content;
       }
     } catch (err: any) {
       console.warn(`Groq fetch error with model ${model}:`, err.message);

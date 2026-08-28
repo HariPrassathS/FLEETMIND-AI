@@ -44,17 +44,47 @@ export default function AdminFleetPage() {
     setIsAddModalOpen(false);
   };
 
+  const availableCount = lorries.filter((l) => l.status === 'AVAILABLE').length;
+  const onRouteCount = lorries.filter((l) => l.status === 'ON_ROUTE').length;
+  const maintenanceCount = lorries.filter((l) => l.status === 'MAINTENANCE').length;
+  const avgEco = lorries.length > 0 ? (lorries.reduce((s, l) => s + l.fuel_efficiency_km_per_l, 0) / lorries.length).toFixed(1) : '0';
+
   return (
     <>
-      <PortalHeader
-        title="Fleet Vehicle Registry"
-        subtitle="Commercial vehicle specifications, tare weight limits, fuel efficiency baselines & maintenance logs"
-      />
+      {/* Dark Premium Header */}
+      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 px-6 sm:px-10 py-8 border-b border-white/10">
+        <div className="max-w-7xl mx-auto flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+            <Truck className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <p className="text-[10px] font-mono tracking-widest text-blue-300 uppercase">FleetMind AI · Admin Panel</p>
+            <h1 className="text-xl sm:text-2xl font-black text-white">Fleet Vehicle Registry</h1>
+          </div>
+        </div>
+      </div>
 
       <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full">
+        {/* Fleet KPI Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: 'Total Fleet', value: lorries.length, sub: 'Registered carriers', color: 'text-slate-900', bg: 'bg-white' },
+            { label: 'Available', value: availableCount, sub: 'Ready for dispatch', color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+            { label: 'On Route', value: onRouteCount, sub: 'Currently dispatched', color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
+            { label: 'Avg Fuel Economy', value: `${avgEco} km/L`, sub: 'Fleet average mileage', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
+          ].map((m) => (
+            <div key={m.label} className={`${m.bg} rounded-3xl border border-slate-200 shadow-sm p-5 space-y-1 hover:-translate-y-0.5 transition-all`}>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{m.label}</p>
+              <p className={`text-3xl font-black ${m.color}`}>{m.value}</p>
+              <p className="text-xs text-slate-500 font-medium">{m.sub}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Table Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
               Fleet Units ({lorries.length})
             </h3>
             <p className="text-xs text-slate-500">Commercial vehicles registered for dispatch assignment</p>
@@ -62,7 +92,7 @@ export default function AdminFleetPage() {
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-card transition flex items-center gap-2"
+            className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Register New Vehicle
@@ -105,12 +135,14 @@ export default function AdminFleetPage() {
                     <td className="py-3.5 px-6 font-bold text-blue-700">{l.fuel_efficiency_km_per_l} km / L</td>
                     <td className="py-3.5 px-6">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase border ${
                           l.status === 'AVAILABLE'
-                            ? 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : l.status === 'ON_ROUTE'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-rose-100 text-rose-800'
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : l.status === 'LOADING'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
                         }`}
                       >
                         {l.status}

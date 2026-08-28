@@ -454,6 +454,18 @@ export default function LandingPage() {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-[11px] font-bold text-blue-100 uppercase mb-1">Account Password *</label>
+                <input
+                  type="password"
+                  required
+                  value={dispForm.password}
+                  onChange={(e) => setDispForm({ ...dispForm, password: e.target.value })}
+                  placeholder="Set your secure dispatcher password"
+                  className="w-full p-2.5 rounded-xl bg-white text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
               <button
                 type="submit"
                 disabled={dispSubmitting}

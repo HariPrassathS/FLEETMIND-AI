@@ -2675,6 +2675,29 @@ class FleetMindStore {
       action_url: `/dispatcher/shipments`,
     });
 
+    // Auto-dispatch official tax invoice and delivery receipt to receiver & customer email
+    const invoiceEmail = shipment.receiver_email || shipment.customer_email || 'customer@fleetmind.ai';
+    if (typeof window !== 'undefined' && invoiceEmail) {
+      fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'DELIVERY_INVOICE',
+          receiverEmail: invoiceEmail,
+          receiverName: data.receiver_name || shipment.receiver_name || 'Authorized Consignee',
+          shipmentCode: shipment.shipment_code,
+          pickupCity: shipment.pickup_city,
+          destinationCity: shipment.destination_city,
+          weightKg: shipment.weight_kg,
+          commodity: shipment.description,
+          totalAmountInr: shipment.estimated_cost || 4200,
+          deliveredAt: shipment.actual_delivery_time || new Date().toISOString(),
+          driverName: shipment.assigned_driver_name || 'Commercial Pilot',
+          vehicleCode: shipment.assigned_lorry_code || 'L-01',
+        }),
+      }).catch((e) => console.warn('[SMTP] Auto-Invoice dispatch notice:', e.message));
+    }
+
     // Free up lorry and driver
     if (shipment.assigned_lorry_id) {
       const l = this.lorries.find((x) => x.id === shipment.assigned_lorry_id);

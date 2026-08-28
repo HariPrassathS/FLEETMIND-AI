@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendEmail, sendDeliveryOtpEmail, sendDispatcherApprovalEmail } from '../../../lib/email/mailer';
+import {
+  sendEmail,
+  sendDeliveryOtpEmail,
+  sendDispatcherApprovalEmail,
+  sendDeliveryInvoiceEmail,
+} from '../../../lib/email/mailer';
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,6 +24,23 @@ export async function POST(req: NextRequest) {
         shipmentCode: data.shipmentCode,
         otpCode: data.otpCode,
         destinationCity: data.destinationCity || 'Destination',
+      });
+      return NextResponse.json(result);
+    }
+
+    if (action === 'DELIVERY_INVOICE') {
+      const result = await sendDeliveryInvoiceEmail({
+        receiverEmail: data.receiverEmail,
+        receiverName: data.receiverName || 'Authorized Consignee',
+        shipmentCode: data.shipmentCode,
+        pickupCity: data.pickupCity || 'Origin Hub',
+        destinationCity: data.destinationCity || 'Destination Dock',
+        weightKg: Number(data.weightKg) || 1000,
+        commodity: data.commodity || 'General Freight Consignment',
+        totalAmountInr: Number(data.totalAmountInr) || 3500,
+        deliveredAt: data.deliveredAt || new Date().toISOString(),
+        driverName: data.driverName,
+        vehicleCode: data.vehicleCode,
       });
       return NextResponse.json(result);
     }
